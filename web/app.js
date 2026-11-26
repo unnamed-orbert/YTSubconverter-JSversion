@@ -24,6 +24,7 @@ const input = document.getElementById('file');
 const format = document.getElementById('format');
 const fadeShadows = document.getElementById('fadeShadows');
 const fadeCutoff = document.getElementById('fadeCutoff');
+const captureRadius = document.getElementById('captureRadius');
 const fixDuplication = document.getElementById('fixDuplication');
 const results = document.getElementById('results');
 const preview = new YttPreview(document.getElementById('preview'));
@@ -165,7 +166,7 @@ async function addRecoverButton(li, file) {
       // Deixa o navegador desenhar o "Recuperando…" antes do trabalho pesado
       await new Promise((r) => setTimeout(r, 20));
       const doc = await loadDocument(file.name, content);
-      const result = recoverTags({ lines: doc.lines, videoDimensions: doc.videoDimensions });
+      const result = recoverTags({ lines: doc.lines, videoDimensions: doc.videoDimensions }, { captureRadius: Number(captureRadius.value) });
       const name = baseName(file.name) + '.recuperado.ass';
       const a = document.createElement('a');
       a.className = 'btn';

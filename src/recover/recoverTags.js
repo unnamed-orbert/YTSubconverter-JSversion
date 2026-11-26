@@ -43,13 +43,19 @@ const ALPHA_TOLERANCE = 14;
  * Recupera as tags de um .ytt.
  * @param {string | Uint8Array | YttDocument | {lines: import('../model.js').Line[], videoDimensions?: object}} input
  *   conteúdo do .ytt/.srv3, um documento já lido ou só as linhas (sourceLines dos eventos são índices nelas)
+ * @param {{captureRadius?: number}} [options]
+ *   captureRadius: raio de captura, em px (padrão 40), para juntar as cópias do \\ytchroma num grupo e ligar o grupo à
+ *   linha principal; quanto maior, mais longe (e mais tempo antes/depois) uma cópia pode estar para ser capturada
  * @returns {{events: RecoveredEvent[], styles: RecoveredStyle[], ass: string, styleOptionsXml: string, summary: Record<string, number>}}
  *
  * @typedef {{tag: string, text: string, reason: string}} RecoveredTag
  * @typedef {{start: number, end: number, style: string, text: string, assText: string, tags: RecoveredTag[], frames: number, phrase: number, sourceLines: number[]}} RecoveredEvent
  * @typedef {{name: string, shadowTypes: string[], line: string}} RecoveredStyle
  */
-export function recoverTags(input) {
+export const DEFAULT_CAPTURE_RADIUS = 40;
+
+export function recoverTags(input, options = {}) {
+  const captureRadius = Math.max(5, Number(options.captureRadius) || DEFAULT_CAPTURE_RADIUS);
   let doc;
   if (input instanceof YttDocument) doc = input;
   else if (Array.isArray(input?.lines)) {
@@ -64,7 +70,7 @@ export function recoverTags(input) {
 
   const results = [];
   for (const track of tracks) results.push(...analyzeTrack(track, doc));
-  detectChroma(results, doc);
+  results.push(...detectChroma(results, doc, captureRadius));
 
   const events = results.filter((r) => !r.removed).sort((a, b) => a.start - b.start || a.sourceLines[0] - b.sourceLines[0]);
   assignPhrases(events, doc);
@@ -1074,9 +1080,61 @@ const eventCenter = (e, doc) => e.basePos ?? e.move?.from ?? doc.getDefaultPosit
 /** Mesmo texto, ignorando espaços nas pontas (a sílaba final do karaokê costuma levar um espaço) e ZWSP. */
 const sameWords = (a, b) => a.replace(/[\u200B\s]+/g, ' ').trim() === b.replace(/[\u200B\s]+/g, ' ').trim();
 
-function detectChroma(events, doc) {
+/**
+ * Linha "fantasma" para um grupo de cópias do \\ytchroma sem texto principal: as cópias que se aproximam do centro
+ * são a entrada, as que se afastam são a saída; in + out cobre a linha toda.
+ */
+function mainlessChromaLine(cluster, center, doc) {
+  const colors = new Set(cluster.members.map((k) => colorToHex(k.finalChars[k.visible[0]].fore)));
+  if (colors.size < 2 || cluster.end - cluster.start > 3000) return null;
+  const dist = (p) => Math.hypot(p.x - center.x, p.y - center.y);
+  let inEnd = cluster.start;
+  let outStart = cluster.end;
+  for (const k of cluster.members) {
+    if (!k.move) continue;
+    if (dist(k.move.from) > dist(k.move.to) + 1) inEnd = Math.max(inEnd, k.end);
+    else if (dist(k.move.to) > dist(k.move.from) + 1) outStart = Math.min(outStart, k.start);
+  }
+  const duration = cluster.end - cluster.start;
+  let inMs = round10(inEnd - cluster.start);
+  let outMs = round10(cluster.end - outStart);
+  // Sem movimento visível (o .ytt arredonda a posição para 1% da tela): metade entrando, metade saindo
+  if (inMs === 0 && outMs === 0) inMs = outMs = round10(duration / 2 + 5);
+  if (inMs + outMs < duration) {
+    // Sem movimento suficiente para separar: divide o que falta entre as duas
+    const rest = duration - inMs - outMs;
+    inMs = round10(inMs + rest / 2 + 5);
+    outMs = round10(outMs + rest / 2 + 5);
+  }
+
+  const model = cluster.members.reduce((a, b) => (dist(eventCenter(a, doc)) <= dist(eventCenter(b, doc)) ? a : b));
+  const white = Color.fromArgb(254, 254, 254, 254);
+  const chars = model.finalChars.map((c) => ({ ...c, fore: white, shadows: new Map() }));
+  return {
+    ...model,
+    start: cluster.start,
+    end: cluster.end,
+    mode: 'static',
+    karaoke: null,
+    fade: null,
+    move: null,
+    shake: null,
+    removed: false,
+    basePos: { x: center.x, y: center.y },
+    initialChars: chars,
+    finalChars: chars,
+    timelines: chars.map((c) => ({ initial: c, transitions: [] })),
+    tags: [],
+    sourceLines: [],
+    chromaSplit: { in: inMs, out: outMs },
+  };
+}
+
+function detectChroma(events, doc, radius = DEFAULT_CAPTURE_RADIUS) {
   const candidates = events.filter(isChromaCandidate);
-  if (candidates.length === 0) return;
+  if (candidates.length === 0) return [];
+  // Tempo entre o grupo de cópias e a linha principal: 100 ms com o raio padrão, mais com um raio maior
+  const timeWindow = Math.max(100, radius * 2.5);
 
   // Grupos de cópias com o mesmo texto que se sobrepõem no tempo
   const clusters = [];
@@ -1084,9 +1142,11 @@ function detectChroma(events, doc) {
   for (const c of [...candidates].sort((x, y) => x.start - y.start)) {
     const key = c.text.replace(/[\u200B\s]+/g, ' ').trim();
     const list = byText.get(key) ?? [];
-    let cluster = list.find((cl) => c.start <= cl.end + 2 && cl.start < c.end);
+    // Mesmo texto, encostados no tempo e perto na tela (duas linhas iguais em lados opostos são grupos diferentes)
+    const pc = eventCenter(c, doc);
+    let cluster = list.find((cl) => c.start <= cl.end + 2 && cl.start < c.end && Math.hypot(pc.x - cl.pos.x, pc.y - cl.pos.y) <= Math.max(120, radius * 3));
     if (!cluster) {
-      cluster = { text: c.text, start: c.start, end: c.end, members: [] };
+      cluster = { text: c.text, start: c.start, end: c.end, members: [], pos: pc };
       list.push(cluster);
       clusters.push(cluster);
     }
@@ -1118,11 +1178,12 @@ function detectChroma(events, doc) {
     }
     const list = [...byColor.values()];
     const maxDist = Math.max(...list.map((l) => Math.hypot(l.off.x, l.off.y)));
-    if (maxDist > 120) return null;
+    if (maxDist > Math.max(120, radius * 3)) return null;
     list.sort((a, b) => b.off.x - a.off.x || b.off.y - a.off.y);
     return { list, c };
   };
 
+  const created = [];
   for (const cluster of clusters) {
     if (cluster.used) continue;
     const center = { x: 0, y: 0 };
@@ -1133,18 +1194,36 @@ function detectChroma(events, doc) {
     }
     const near = (m) => {
       const p = eventCenter(m, doc);
-      return sameWords(m.text, cluster.text) && !m.removed && Math.hypot(p.x - center.x, p.y - center.y) <= 40;
+      return sameWords(m.text, cluster.text) && !m.removed && Math.hypot(p.x - center.x, p.y - center.y) <= radius;
     };
-    const ins = mains.filter((m) => near(m) && !cluster.members.includes(m) && Math.abs(m.start - cluster.end) <= 100 && m.start >= cluster.start);
-    const outs = mains.filter((m) => near(m) && !cluster.members.includes(m) && Math.abs(cluster.start - m.end) <= 100 && m.end <= cluster.end);
+    const ins = mains.filter((m) => near(m) && !cluster.members.includes(m) && Math.abs(m.start - cluster.end) <= timeWindow && m.start >= cluster.start);
+    const outs = mains.filter((m) => near(m) && !cluster.members.includes(m) && Math.abs(cluster.start - m.end) <= timeWindow && m.end <= cluster.end);
     const pickBest = (list, key) => list.sort((a, b) => Number(hasShadowOrBox(b)) - Number(hasShadowOrBox(a)) || key(a) - key(b))[0];
     const mainIn = pickBest(ins, (m) => Math.abs(m.start - cluster.end));
     const mainOut = pickBest(outs, (m) => Math.abs(cluster.start - m.end));
-    const main = mainIn ?? mainOut;
-    if (!main) continue;
-    const fadeIn = main === mainIn;
+    let main = mainIn ?? mainOut;
+    let fadeInOut = null;
+    if (!main) {
+      // Sem linha principal: no .ass, \\ytchroma(in, out) com in + out >= duração da linha (o texto em si nunca
+      // aparece, só as cópias entrando e saindo).
+      main = mainlessChromaLine(cluster, center, doc);
+      if (!main) continue;
+      fadeInOut = main.chromaSplit;
+    }
+    const fadeIn = fadeInOut ? true : main === mainIn;
     const info = attach(cluster, main, fadeIn);
     if (!info) continue;
+    if (fadeInOut) {
+      cluster.used = true;
+      for (const k of cluster.members) k.removed = true;
+      main.sourceLines = cluster.members.flatMap((k) => k.sourceLines).sort((x, y) => x - y);
+      main.chromaParts = {
+        in: { ms: fadeInOut.in, ...info, copies: cluster.members.length },
+        out: { ms: fadeInOut.out, ...info, copies: 0 },
+      };
+      created.push(main);
+      continue;
+    }
 
     cluster.used = true;
     for (const k of cluster.members) k.removed = true;
@@ -1157,7 +1236,7 @@ function detectChroma(events, doc) {
     else main.end = cluster.end;
   }
 
-  for (const main of events) {
+  for (const main of [...events, ...created]) {
     if (!main.chromaParts) continue;
     const { in: pin, out: pout } = main.chromaParts;
     const part = pin ?? pout;
@@ -1193,6 +1272,7 @@ function detectChroma(events, doc) {
         (inMs ? `, ${inMs} ms antes do texto aparecer` : '') + (outMs ? `, ${outMs} ms depois de ele sumir` : ''),
     };
   }
+  return created;
 }
 
 // ---------------------------------------------------------------------------------------------

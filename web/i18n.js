@@ -30,6 +30,8 @@ const STRINGS = {
       'Desligado, o resultado é igual ao YTSubConverter original.',
     fadeBefore: 'No fade, tirar sombra/contorno abaixo de',
     fadeAfter: '% de opacidade',
+    captureLabel: 'Raio de captura do \\ytchroma (recuperar tags)',
+    captureTitle: 'Na recuperação de tags: até quantos px do texto as cópias coloridas do \\ytchroma são capturadas e ligadas a ele. Aumente se o chroma sair picado em várias linhas soltas.',
     dedupTitle:
       'Ao converter .json3/.ytt para .srt: um .json3/.ytt cheio de estilos e animação (fade, movimento, karaokê, várias sombras) repete a mesma frase em centenas de linhas, uma por quadro. ' +
       'Com isto ligado (o padrão), as repetições viram uma linha por frase, com os tempos acertados, igual à ferramenta YTT → SRT. Para saída .ytt/.ass não muda nada.',
@@ -158,6 +160,8 @@ const STRINGS = {
       'With it off, the result is the same as the original YTSubConverter.',
     fadeBefore: 'During fades, remove shadow/outline below',
     fadeAfter: '% opacity',
+    captureLabel: '\\ytchroma capture radius (recover tags)',
+    captureTitle: 'When recovering tags: how many px away from the text the colored \\ytchroma copies are captured and attached to it. Increase it if the chroma comes out split into loose lines.',
     dedupTitle:
       'When converting .json3/.ytt to .srt: a .json3/.ytt full of styles and animation (fade, movement, karaoke, multiple shadows) repeats the same sentence in hundreds of lines, one per frame. ' +
       'With this on (the default), the repeats become one line per sentence, with the timing fixed, like the YTT → SRT tool. It changes nothing for .ytt/.ass output.',
@@ -286,6 +290,8 @@ const STRINGS = {
       'Desactivado, el resultado es igual al YTSubConverter original.',
     fadeBefore: 'En los fundidos, quitar sombra/contorno por debajo del',
     fadeAfter: '% de opacidad',
+    captureLabel: 'Radio de captura del \\ytchroma (recuperar etiquetas)',
+    captureTitle: 'Al recuperar etiquetas: hasta cuántos px del texto se capturan las copias de color del \\ytchroma y se unen a él. Auméntalo si el chroma sale partido en varias líneas sueltas.',
     dedupTitle:
       'Al convertir .json3/.ytt a .srt: un .json3/.ytt lleno de estilos y animación (fundido, movimiento, karaoke, varias sombras) repite la misma frase en cientos de líneas, una por fotograma. ' +
       'Con esto activado (por defecto), las repeticiones se convierten en una línea por frase, con los tiempos ajustados, como la herramienta YTT → SRT. Para salida .ytt/.ass no cambia nada.',
@@ -414,6 +420,8 @@ const STRINGS = {
       "Désactivée, le résultat est identique à celui du YTSubConverter d'origine.",
     fadeBefore: "Pendant les fondus, retirer l'ombre/le contour sous",
     fadeAfter: "% d'opacité",
+    captureLabel: 'Rayon de capture du \\ytchroma (récupérer les balises)',
+    captureTitle: 'Lors de la récupération des balises : à combien de px du texte les copies colorées du \\ytchroma sont capturées et rattachées. Augmentez-le si le chroma sort découpé en lignes isolées.',
     dedupTitle:
       'En convertissant un .json3/.ytt en .srt : un .json3/.ytt plein de styles et d’animations (fondu, mouvement, karaoké, plusieurs ombres) répète la même phrase sur des centaines de lignes, une par image. ' +
       "Avec cette option (par défaut), les répétitions deviennent une ligne par phrase, avec les temps corrigés, comme l'outil YTT → SRT. Pour une sortie .ytt/.ass, rien ne change.",

@@ -20,9 +20,12 @@ const keepDuplication = args.includes(KEEP_DUP_FLAG);
 // --recuperar-tags: .ytt/.json3 -> .ass tentando reconstruir as tags originais (src/recover/recoverTags.js)
 const RECOVER_FLAG = '--recuperar-tags';
 const recover = args.includes(RECOVER_FLAG);
-const [input, outputArg] = args.filter((a) => a !== fadeArg && a !== DEDUP_FLAG && a !== KEEP_DUP_FLAG && a !== RECOVER_FLAG);
+// --raio-captura=40: raio (px) em que as cópias do \ytchroma são capturadas e ligadas à linha principal
+const radiusArg = args.find((a) => a.startsWith('--raio-captura='));
+const captureRadius = radiusArg ? Number(radiusArg.split('=')[1]) : undefined;
+const [input, outputArg] = args.filter((a) => a !== fadeArg && a !== DEDUP_FLAG && a !== KEEP_DUP_FLAG && a !== RECOVER_FLAG && a !== radiusArg);
 if (!input || input === '-h' || input === '--help') {
-  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras[=45]] [--manter-duplicacao | --corrigir-duplicacao] [--recuperar-tags]');
+  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras[=45]] [--manter-duplicacao | --corrigir-duplicacao] [--recuperar-tags [--raio-captura=40]]');
   process.exit(input ? 0 : 1);
 }
 
@@ -50,7 +53,7 @@ try {
   const doc = await loadDocument(input, content);
   if (recover) {
     if (extname(output).toLowerCase() !== '.ass') throw new Error('--recuperar-tags gera .ass: use uma saída .ass.');
-    const result = recoverTags({ lines: doc.lines, videoDimensions: doc.videoDimensions });
+    const result = recoverTags({ lines: doc.lines, videoDimensions: doc.videoDimensions }, { captureRadius });
     writeFileSync(output, '\uFEFF' + result.ass, 'utf8');
     console.log(`${input} -> ${output} (${result.events.length} linhas)`);
     const tags = Object.entries(result.summary).map(([tag, n]) => `\\${tag} ×${n}`).join(', ');

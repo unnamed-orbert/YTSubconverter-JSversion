@@ -182,3 +182,29 @@ test('.ass recuperado com várias sombras pode ser salvo como .ass de novo', asy
   assert.match(again, /^Style: YTGlowSoftShadowHardShadowBevel,/m);
   assert.match(again, /YTGlowSoftShadowHardShadowBevel,,0,0,0,,.*Tão/);
 });
+
+test('\\ytchroma sem texto principal (in + out >= duração): as cópias viram uma linha com \\ytchroma', async () => {
+  const result = await roundTrip(
+    '0:00:01.00,0:00:01.50,YTPlain,,0,0,0,,{\\an5\\pos(300,360)\\ytchroma(&HFF00D4&,&HFA3EEC&,&HFF0092&,90,10,0,300,300)}Culpa',
+    '0:00:01.00,0:00:01.50,YTPlain,,0,0,0,,{\\an5\\pos(980,360)\\ytchroma(&HFF00D4&,&HFA3EEC&,&HFF0092&,90,10,0,300,300)}Culpa',
+  );
+  assert.equal(result.events.length, 2, result.ass);
+  for (const e of result.events) {
+    assert.ok(tagOf(e, 'ytchroma'), e.assText);
+    near(e.start, 1000, 40, 'início');
+    near(e.end, 1500, 40, 'fim');
+  }
+  // As duas linhas iguais em lados opostos da tela não se misturam
+  const xs = result.events.map((e) => numbers(e.assText.match(/\\pos\([^)]*\)/)[0])[0]).sort((a, b) => a - b);
+  near(xs[0], 300, 15, 'x esquerda');
+  near(xs[1], 980, 15, 'x direita');
+});
+
+test('raio de captura é uma opção', async () => {
+  const ass = header + 'Dialogue: 0,0:00:01.00,0:00:05.00,YTPlain,,0,0,0,,{\\an5\\pos(640,360)\\ytchroma}Cromático\n';
+  const ytt = convertDocument(await loadDocument('x.ass', ass), '.ytt').save();
+  for (const captureRadius of [10, 40, 200]) {
+    const e = only(recoverTags(ytt, { captureRadius }));
+    assert.ok(tagOf(e, 'ytchroma'), `raio ${captureRadius}: ${e.assText}`);
+  }
+});

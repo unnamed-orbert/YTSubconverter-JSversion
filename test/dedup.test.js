@@ -68,3 +68,22 @@ test('dedup: .json3 e .ytt dão o mesmo .srt', () => {
 test('dedup: só vale para .ytt/.json3', () => {
   assert.equal(canFixMassiveDuplication(SrtDocument.parse('1\n00:00:01,000 --> 00:00:02,000\nOi\n')), false);
 });
+
+test('dedup: plainText deixa só o texto, numa linha, como a ferramenta YTT → SRT', () => {
+  const doc = YttDocument.parse(ytt([...frames(0, 1000, '  Linha um\nlinha dois ')]));
+  fixMassiveDuplication(doc, { plainText: true });
+  assert.equal(doc.lines.length, 1);
+  assert.equal(doc.lines[0].sections.length, 1);
+  assert.equal(doc.lines[0].text, 'Linha um linha dois');
+});
+
+test('dedup: ah="0" conta como centro, igual à ferramenta ("ahHorPos || 50")', () => {
+  // Esquerda (ah=0) e centro (ah=50) na mesma faixa: para a ferramenta são a mesma célula, então alternar
+  // as duas frases quadro a quadro quebra a junção, e o que fica é o que a ferramenta gera.
+  const positions = '<wp id="0" ap="7" ah="50" av="100"/><wp id="1" ap="6" ah="0" av="100"/>';
+  const fr = [];
+  for (let t = 0; t < 2000; t += 100) fr.push([t, 50, 'Centro', 0], [t + 50, 50, 'Esquerda', 1]);
+  const doc = YttDocument.parse(ytt(fr, positions));
+  fixMassiveDuplication(doc);
+  assert.equal(doc.lines.length, 0);
+});

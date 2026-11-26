@@ -30,7 +30,8 @@ function baseName(name) {
 async function convertFile(file, targetExt) {
   const cutoff = Number(fadeCutoff.value);
   const options = { fadeShadowCutoff: fadeShadows.checked && cutoff > 0 ? Math.min(cutoff, 100) : null };
-  const dedup = fixDuplication.checked;
+  // Corrigir duplicação massiva: só no caminho .ytt/.json3 -> .srt (para .ytt/.ass a legenda fica como está).
+  const dedup = targetExt === '.srt' && fixDuplication.checked;
   const content = new Uint8Array(await file.arrayBuffer());
   const format = getInputFormat(file.name, content);
   if (!format) throw new Error('Não reconheci o formato desta legenda. Use .srt, .sbv, .ass, .ytt/.srv3 ou json3.');
@@ -38,12 +39,12 @@ async function convertFile(file, targetExt) {
   const name = baseName(file.name) + targetExt;
 
   // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio (a não ser que a opção do fade
-  // esteja ligada, que muda as sombras, ou a de corrigir duplicação, que junta as linhas).
-  if (isYtt && YTT_EXTENSIONS.includes(targetExt) && options.fadeShadowCutoff == null && !dedup) {
+  // esteja ligada, que muda as sombras).
+  if (isYtt && YTT_EXTENSIONS.includes(targetExt) && options.fadeShadowCutoff == null) {
     return { download: { name, blob: file }, ytt: content };
   }
 
-  const doc = await load(file.name, content, dedup);
+  const doc = await load(file.name, content, dedup, true);
   if (doc.lines.length === 0) throw new Error('Nenhuma legenda encontrada neste arquivo.');
   const text = convertDocument(doc, targetExt, options).save({ bom: true });
   // O BOM vem como \uFEFF no texto; o Blob grava em UTF-8.
@@ -53,16 +54,25 @@ async function convertFile(file, targetExt) {
   if (YTT_EXTENSIONS.includes(targetExt)) ytt = text;
   else if (isYtt && !dedup) ytt = content;
   // save() altera o documento, então o .ytt do preview sai de uma leitura nova.
-  else ytt = convertDocument(await load(file.name, content, dedup), '.ytt', options).save();
+  // Com a correção, o preview mostra as frases já juntas, mas com as cores e posições.
+  else ytt = convertDocument(await load(file.name, content, dedup, false), '.ytt', options).save();
   return { download, ytt };
 }
 
 /** Lê o arquivo e, se pedido e a entrada for .ytt/.json3, junta as cópias quadro a quadro. */
-async function load(fileName, content, dedup) {
+async function load(fileName, content, dedup, plainText) {
   const doc = await loadDocument(fileName, content);
-  if (dedup && canFixMassiveDuplication(doc)) fixMassiveDuplication(doc);
+  if (dedup && canFixMassiveDuplication(doc)) fixMassiveDuplication(doc, { plainText });
   return doc;
 }
+
+// A correção de duplicação só vale para a saída .srt.
+function updateDedupState() {
+  fixDuplication.disabled = format.value !== '.srt';
+  fixDuplication.closest('label').classList.toggle('disabled', fixDuplication.disabled);
+}
+format.addEventListener('change', updateDedupState);
+updateDedupState();
 
 function addRow(fileName) {
   const li = document.createElement('li');

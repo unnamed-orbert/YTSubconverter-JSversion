@@ -88,6 +88,13 @@ This is automatic for .srt output (on the page, the "Fix massive duplication" ch
 turn it off: uncheck the box, or use `--manter-duplicacao` in the CLI. For .ytt/.ass output the subtitles are left untouched,
 unless you use `--corrigir-duplicacao` in the CLI.
 
+### Tag hierarchy (fade + karaoke + chroma)
+
+In the original, `\fad`/`\fade` and `\ytkt(Fade)` karaoke leave the shadow/outline opaque while the text fades,
+because .ytt has no shadow opacity. With the tag hierarchy (on by default on the page and in the CLI; `--modo-original`
+turns it off) the tags compose instead of cancelling each other and shadows follow the text opacity. See
+[docs/hierarquia-de-tags.md](docs/hierarquia-de-tags.md).
+
 ### Recover the original tags (.ytt/.json3 → .ass)
 
 A regular .ytt → .ass conversion returns each animation frame as a separate line. `src/recover/recoverTags.js`

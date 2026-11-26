@@ -5,9 +5,9 @@
 //   stepLine, stepIndex, numActiveSections, singingSections }
 // and returns an iterable of lines.
 
-import { GlitchingCharAnimation, ForeColorAnimation, ShadowColorAnimation } from '../../animations/animations.js';
+import { BackColorAnimation, GlitchingCharAnimation, ForeColorAnimation, ShadowColorAnimation } from '../../animations/animations.js';
 import { RubyPart, ShadowType } from '../../enums.js';
-import { Color } from '../../util/color.js';
+import { changeAlpha, Color } from '../../util/color.js';
 import { CharacterRange } from '../../util/misc.js';
 import { toInt, tryParseInt } from '../../util/numbers.js';
 import { TIME_BASE, addMs, frameToEndTime, minTime, roundTimeToFrameCenter, startTimeToFrame } from '../../util/time.js';
@@ -49,6 +49,7 @@ AssLine.defaultKaraokeType = SimpleKaraokeType.instance;
 export class FadeKaraokeType {
   apply(context) {
     applyFadeInKaraokeEffect(context.stepLine, context.singingSections);
+    if (context.document?.tagHierarchy) applyFadeInDecorationOpacity(context.stepLine, context.singingSections);
     applyFadeOutKaraokeEffect(context.originalLine, context.stepLine, context.activeSectionsPerStep, context.stepIndex);
     return [context.stepLine];
   }
@@ -80,6 +81,33 @@ function applyFadeInKaraokeEffect(stepLine, singingSections) {
       s.animations.push(new ShadowColorAnimation(
         ShadowType.Glow, stepLine.start, getRequired(s.shadowColors, ShadowType.Glow), fadeEndTime, s.currentWordOutlineColor, 1));
     }
+  }
+}
+
+/**
+ * Extensão do port (hierarquia de tags, ver docs/hierarquia-de-tags.md): no C# só o texto da sílaba sai da opacidade
+ * do \\2c e chega à do \\1c; a sombra, o contorno e a caixa aparecem inteiros no primeiro quadro, então a sílaba
+ * "nasce" como um contorno preto antes do texto. Aqui o destaque (karaokê) é uma transição que também vale para as
+ * decorações: elas começam com a mesma fração de opacidade que o texto (\\2c / cor final) e chegam à delas junto.
+ */
+function applyFadeInDecorationOpacity(stepLine, singingSections) {
+  const fadeEndTime = minTime(addMs(stepLine.start, 500), stepLine.end);
+  for (const s of singingSections) {
+    const target = s.currentWordForeColor.isEmpty ? s.foreColor : s.currentWordForeColor;
+    if (target.a === 0 || s.secondaryColor.a >= target.a) continue;
+    const ratio = s.secondaryColor.a / target.a;
+    const scaled = (c) => changeAlpha(c, toInt(c.a * ratio));
+
+    for (const [shadowType, color] of s.shadowColors) {
+      const existing = s.animations.find(
+        (a) => a instanceof ShadowColorAnimation && a.shadowType === shadowType && a.startTime === stepLine.start && a.endTime === fadeEndTime,
+      );
+      if (existing) existing.startColor = scaled(existing.startColor);
+      else if (color.a > 0) s.animations.push(new ShadowColorAnimation(shadowType, stepLine.start, scaled(color), fadeEndTime, color, 1));
+    }
+
+    if (!s.backColor.isEmpty && s.backColor.a > 0)
+      s.animations.push(new BackColorAnimation(stepLine.start, scaled(s.backColor), fadeEndTime, s.backColor, 1));
   }
 }
 

@@ -21,11 +21,12 @@ export function getDefaultStyleOptions() {
 /**
  * Loads an .ass file.
  * @param {string | Uint8Array | ArrayBuffer} content
- * @param {{ styleOptions?: import('./assModel.js').AssStyleOptions[] | null }} [options]
+ * @param {{ styleOptions?: import('./assModel.js').AssStyleOptions[] | null, tagHierarchy?: boolean }} [options]
  *   When styleOptions is omitted, the built-in defaults are used (like SubtitleDocument.Load in C#,
  *   which appends them to the user's StyleOptions.xml). Pass null to use no style options at all.
+ *   tagHierarchy: see AssDocument and docs/hierarquia-de-tags.md.
  */
-export function loadAssDocument(content, { styleOptions } = {}) {
+export function loadAssDocument(content, { styleOptions, tagHierarchy = false } = {}) {
   if (styleOptions === undefined) styleOptions = getDefaultStyleOptions();
-  return new AssDocument(content, styleOptions);
+  return new AssDocument(content, styleOptions, { tagHierarchy });
 }

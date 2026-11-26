@@ -76,6 +76,34 @@
     <p class="note" data-i18n="previewNote">Aproximação de como o player do YouTube mostra a legenda. Confira no YouTube antes de publicar.</p>
   </section>
 
+  <section id="compare" class="compare" hidden tabindex="-1">
+    <div class="preview-head">
+      <h2><span data-i18n="compareHeading">Comparação:</span> <span class="title"></span></h2>
+      <a class="btn download" hidden></a>
+    </div>
+    <p class="cmp-summary"><strong class="cmp-sim"></strong> <span class="cmp-props"></span> · <span class="cmp-segs"></span></p>
+    <div class="cmp-stages">
+      <figure><figcaption data-i18n="compareOriginal">Original</figcaption><div class="stage"><div class="cues"></div></div></figure>
+      <figure><figcaption data-i18n="compareRemade">Refeito a partir do .ass recuperado</figcaption><div class="stage"><div class="cues"></div></div></figure>
+    </div>
+    <div class="controls">
+      <button type="button" class="play" data-i18n="play">Tocar</button>
+      <input type="range" class="seek" min="0" max="0" step="10" value="0" aria-label="Posição" data-i18n-aria-label="position">
+      <span class="time">0:00.00</span>
+    </div>
+    <div class="cmp-timeline">
+      <div class="cmp-labels"></div>
+      <div class="cmp-track"><canvas class="cmp-bar"></canvas><div class="cmp-cursor"></div></div>
+    </div>
+    <div class="cmp-nav">
+      <button type="button" class="cmp-prev" data-i18n="comparePrev">◀ Diferença anterior</button>
+      <span class="cmp-now"></span>
+      <button type="button" class="cmp-next" data-i18n="compareNext">Próxima diferença ▶</button>
+    </div>
+    <ul class="cmp-diffs"></ul>
+    <p class="note" data-i18n="compareNote"></p>
+  </section>
+
   <noscript><p class="err">Esta página precisa de JavaScript.</p></noscript>
   <p id="filewarn" class="err" hidden data-i18n="fileWarn">Abra esta página por um servidor (por exemplo o GitHub Pages);
     abrindo o arquivo direto do disco o navegador bloqueia os módulos JavaScript.</p>

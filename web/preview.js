@@ -86,7 +86,7 @@ function makeSpan(section, visible, withBackground = true) {
   return span;
 }
 
-function renderLine(line, time, index) {
+export function renderLine(line, time, index) {
   const box = document.createElement('div');
   box.className = 'cue';
   box.dataset.line = String(index);
@@ -139,7 +139,7 @@ function renderLine(line, time, index) {
   return box;
 }
 
-function formatTime(ms) {
+export function formatTime(ms) {
   ms = Math.max(0, Math.round(ms));
   const m = Math.floor(ms / 60000);
   const s = Math.floor((ms % 60000) / 1000);

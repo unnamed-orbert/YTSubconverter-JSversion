@@ -1,137 +1,137 @@
 # ytsubconverter-js
 
-Port para JavaScript (Node.js 18+, ESM, sem dependências) do
-[YTSubConverter](https://github.com/arcusmaximus/YTSubConverter), que converte legendas
-para o formato `.ytt` (srv3) do YouTube, preservando cores, posições, sombras, karaokê etc.
+JavaScript port (Node.js 18+, ESM, no dependencies) of
+[YTSubConverter](https://github.com/arcusmaximus/YTSubConverter), which converts subtitles
+to YouTube's `.ytt` (srv3) format, preserving colors, positions, shadows, karaoke, etc.
 
-O objetivo é produzir **exatamente** o mesmo arquivo que o programa original em C#. Por isso o
-código reproduz detalhes do .NET: aritmética `float` (via `Math.fround`), arredondamento bancário
-de `Math.Round`, `DateTime.AddMilliseconds` do .NET Framework e o `System.Random` semeado.
+The goal is to produce **exactly** the same file as the original C# program. That's why the
+code reproduces .NET details: `float` arithmetic (via `Math.fround`), the banker's rounding
+of `Math.Round`, the .NET Framework's `DateTime.AddMilliseconds` and the seeded `System.Random`.
 
-## Uso
+## Usage
 
 ```sh
-node bin/ytsubconverter.js legenda.srt          # gera legenda.ytt
-node bin/ytsubconverter.js legenda.ass saida.ytt
-node bin/ytsubconverter.js legenda.ytt          # gera legenda.srt
-node bin/ytsubconverter.js legenda.srt saida.ass   # .ass com os estilos YT* padrão
-node bin/ytsubconverter.js legenda.json3 saida.ass # json3 do YouTube para .ass (ou saida.ytt)
-node bin/ytsubconverter.js legenda.json3 saida.srt # .srt limpo, uma linha por frase (ver abaixo)
+node bin/ytsubconverter.js subtitle.srt          # generates subtitle.ytt
+node bin/ytsubconverter.js subtitle.ass output.ytt
+node bin/ytsubconverter.js subtitle.ytt          # generates subtitle.srt
+node bin/ytsubconverter.js subtitle.srt output.ass   # .ass with the default YT* styles
+node bin/ytsubconverter.js subtitle.json3 output.ass # YouTube json3 to .ass (or output.ytt)
+node bin/ytsubconverter.js subtitle.json3 output.srt # clean .srt, one line per sentence (see below)
 ```
 
-O formato de entrada é reconhecido **pelo conteúdo** (`src/detect.js`), não pela extensão: um json3
-baixado como `timedtext` sem extensão, ou um `.ytt` salvo como `.txt`, funcionam do mesmo jeito na CLI e
-na página. A extensão só é usada quando o conteúdo não é reconhecido. Sem saída indicada, a CLI nunca
-sobrescreve a entrada (se o nome coincidir, grava `nome.convertido.ext`).
+The input format is detected **from the content** (`src/detect.js`), not the extension: a json3
+downloaded as `timedtext` with no extension, or a `.ytt` saved as `.txt`, work the same way in the CLI and
+on the web page. The extension is only used when the content isn't recognized. If no output is given, the CLI never
+overwrites the input (if the names would collide, it writes `nome.convertido.ext`).
 
 ```js
 import { SrtDocument, YttDocument } from './src/index.js';
-const ytt = new YttDocument(SrtDocument.parse(textoSrt)).save();
-const doc = YttDocument.parse(textoYtt); // leitura de .ytt/.srv3 (desfaz os truques da escrita)
+const ytt = new YttDocument(SrtDocument.parse(srtText)).save();
+const doc = YttDocument.parse(yttText); // reads .ytt/.srv3 (undoes the writer's tricks)
 ```
 
-## Página web
+## Web page
 
-`index.html` é uma página simples: arraste uma legenda `.srt`, `.sbv` ou `.ass` e baixe o `.ytt`
-(ou `.srt`). Ela roda inteiramente no navegador com os mesmos módulos de `src/`, sem servidor
-e sem enviar o arquivo para lugar nenhum.
+`index.html` is a simple page: drag in an `.srt`, `.sbv` or `.ass` subtitle and download the `.ytt`
+(or `.srt`). It runs entirely in the browser using the same modules from `src/`, with no server
+and without sending the file anywhere.
 
-Depois de converter (ou soltando um `.ytt`/`.srv3` direto), a página mostra um **preview**: as legendas
-desenhadas numa área 16:9 com posição, fonte, tamanho, cores, fundo, contorno/sombra, karaokê, ruby e
-texto vertical, com tocar/pausar e linha do tempo. Dá para escolher um vídeo do computador para ver
-a legenda por cima dele, inclusive em tela cheia (botão "Tela cheia", tecla F ou duplo clique). O preview lê o próprio `.ytt` gerado (`web/preview.js`) e é uma aproximação
-do player do YouTube; truques que dependem do jeito exato do YouTube desenhar (por exemplo, várias
-sombras na mesma linha) podem aparecer um pouco diferentes.
+After converting (or when you drop in a `.ytt`/`.srv3` directly), the page shows a **preview**: the subtitles
+drawn in a 16:9 area with position, font, size, colors, background, outline/shadow, karaoke, ruby and
+vertical text, with play/pause and a timeline. You can pick a video from your computer to see
+the subtitles on top of it, including in fullscreen ("Fullscreen" button, F key or double-click). The preview reads the generated `.ytt` itself (`web/preview.js`) and is an approximation
+of the YouTube player; tricks that depend on exactly how YouTube renders things (for example, multiple
+shadows on the same line) may look slightly different.
 
-Como usa módulos JavaScript, a página precisa ser aberta por HTTP, não com duplo clique no arquivo:
+Because it uses JavaScript modules, the page must be opened over HTTP, not by double-clicking the file:
 
-- **GitHub Pages:** em *Settings → Pages*, escolha *Deploy from a branch*, branch `main`, pasta `/ (root)`.
-  A página fica em `https://<usuário>.github.io/<repositório>/`.
-- **Localmente:** `npx serve .` (ou `python3 -m http.server`) na pasta do projeto e abra o endereço mostrado.
+- **GitHub Pages:** under *Settings → Pages*, choose *Deploy from a branch*, branch `main`, folder `/ (root)`.
+  The page will be at `https://<user>.github.io/<repository>/`.
+- **Locally:** run `npx serve .` (or `python3 -m http.server`) in the project folder and open the address shown.
 
-A página está em português, inglês, espanhol e francês (`web/i18n.js`). O idioma inicial é o do
-navegador (outros idiomas caem em inglês), pode ser trocado no seletor do topo e fica salvo no navegador.
+The page is available in Portuguese, English, Spanish and French (`web/i18n.js`). The initial language is the
+browser's (other languages fall back to English); it can be changed with the selector at the top and is saved in the browser.
 
-## Estado
+## Status
 
-| Formato | Leitura | Escrita |
+| Format | Read | Write |
 |---|---|---|
 | .srt | ✅ | ✅ |
-| .sbv | ✅ | — (o original também não escreve) |
+| .sbv | ✅ | — (the original doesn't write it either) |
 | .ytt / .srv3 | ✅ | ✅ |
-| .ass | ✅ | ✅ (sem o modo "visual" do `VisualizingAssDocument`) |
-| .json3 (YouTube) | ✅ (extra, não existe no original) | — |
+| .ass | ✅ | ✅ (without the "visual" mode of `VisualizingAssDocument`) |
+| .json3 (YouTube) | ✅ (extra, not in the original) | — |
 | .ttml | ❌ | ❌ |
 
 ### json3
 
-O `json3` é o formato que o player do YouTube baixa (`/api/timedtext?...&fmt=json3`). Ele tem o mesmo
-conteúdo do srv3/.ytt em JSON (`pens`, `wsWinStyles`, `wpWinPositions`, `events` com `segs`), então
-`src/formats/json3.js` traduz o JSON para srv3 e usa o leitor de .ytt, que desfaz os truques do
-YTSubConverter (espaços de preenchimento, cópia para texto escuro etc.). Arquivos salvos como
-`legenda.json3.txt`, ou com outra extensão, são reconhecidos pelo conteúdo.
+`json3` is the format the YouTube player downloads (`/api/timedtext?...&fmt=json3`). It has the same
+content as srv3/.ytt in JSON form (`pens`, `wsWinStyles`, `wpWinPositions`, `events` with `segs`), so
+`src/formats/json3.js` translates the JSON to srv3 and uses the .ytt reader, which undoes
+YTSubConverter's tricks (padding spaces, the extra copy for dark text, etc.). Files saved as
+`subtitle.json3.txt`, or with another extension, are recognized by their content.
 
-### Corrigir duplicação massiva
+### Fix massive duplication
 
-Um .json3/.ytt cheio de estilos e animação (`\fade`, `\move`, `\t`, karaokê, várias sombras) repete a
-mesma frase em centenas de linhas, uma por quadro. Ao converter .json3/.ytt para **.srt**, `src/dedup.js`
-junta essas cópias em uma linha por frase, como a ferramenta "YTT → SRT" do Carlos (é o port dela, e o .srt
-sai igual ao dela): agrupa por posição na tela (grade de 20%), junta quadros com o mesmo texto (ou texto que
-cresce) separados por menos de 200 ms, descarta frases com menos de 300 ms, na sobreposição fica a mais de
-baixo e fecha buracos de até 500 ms.
+A .json3/.ytt full of styles and animation (`\fade`, `\move`, `\t`, karaoke, multiple shadows) repeats the
+same sentence across hundreds of lines, one per frame. When converting .json3/.ytt to **.srt**, `src/dedup.js`
+merges these copies into one line per sentence, like Carlos's "YTT → SRT" tool (it's a port of it, and the .srt
+output is identical to the tool's): it groups by on-screen position (20% grid), merges frames with the same text (or text that
+grows) separated by less than 200 ms, discards sentences shorter than 300 ms, keeps the lower one when
+they overlap and closes gaps of up to 500 ms.
 
-Isso é automático para a saída .srt (na página, a caixa "Corrigir duplicação massiva" já vem marcada). Para
-desligar: desmarque a caixa, ou `--manter-duplicacao` na CLI. Para saída .ytt/.ass a legenda não é mexida,
-a não ser com `--corrigir-duplicacao` na CLI.
+This is automatic for .srt output (on the page, the "Fix massive duplication" checkbox is checked by default). To
+turn it off: uncheck the box, or use `--manter-duplicacao` in the CLI. For .ytt/.ass output the subtitles are left untouched,
+unless you use `--corrigir-duplicacao` in the CLI.
 
-### Recuperar as tags originais (.ytt/.json3 → .ass)
+### Recover the original tags (.ytt/.json3 → .ass)
 
-A conversão comum .ytt → .ass devolve cada quadro da animação como uma linha. `src/recover/recoverTags.js`
-(extensão, não existe no original) faz o caminho inverso do `Animator.cs` e tenta reconstruir o .ass de origem:
+A regular .ytt → .ass conversion returns each animation frame as a separate line. `src/recover/recoverTags.js`
+(an extension, not in the original) does the reverse of `Animator.cs` and tries to reconstruct the source .ass:
 
-- junta as cópias de uma linha feitas para cada tipo de sombra num estilo só (`YTGlowSoftShadowHardShadowBevel`...);
-- junta os quadros seguidos com o mesmo texto numa linha, e as linhas em frases no esquema do deduplicador;
-- olha a linha inteira: opacidade de todas as letras juntas → `\fad`/`\fade`, posição em linha reta → `\move`,
-  posição pulando em volta de um ponto → `\ytshake`;
-- olha cada letra/sílaba: troca de cor em sequência → `\k` (e `\ytkt(Fade)` se a troca é gradual), o atributo
-  `t` do karaokê nativo → `\k`, mudanças em momentos diferentes → um `\t` por trecho;
-- olha o texto que muda de um quadro para outro no mesmo lugar: uma sílaba que vira um caractere aleatório no
-  primeiro quadro em que é cantada → `\ytkt(Glitch)`; um cursor curto ("_", "|"...) que anda pela linha →
-  `\ytkt(Cursor,...)` (depois do que já foi cantado) ou `\ytkt(LCursor,...)` (antes da sílaba cantada), com o
-  intervalo e as cores de cada cursor;
-- o "rastro" de cópias do mesmo texto, sem sombra e cada uma de uma cor, que se separam em volta do texto antes
-  de ele aparecer ou depois de ele sumir → `\ytchroma`.
+- merges the copies of a line made for each shadow type into a single style (`YTGlowSoftShadowHardShadowBevel`...);
+- merges consecutive frames with the same text into one line, and the lines into sentences following the deduplicator's scheme;
+- looks at the whole line: opacity of all letters changing together → `\fad`/`\fade`, position moving in a straight line → `\move`,
+  position jumping around a point → `\ytshake`;
+- looks at each letter/syllable: colors changing in sequence → `\k` (and `\ytkt(Fade)` if the change is gradual), the native karaoke
+  `t` attribute → `\k`, changes at different moments → one `\t` per segment;
+- looks at text that changes from one frame to the next in the same place: a syllable that turns into a random character on the
+  first frame in which it's sung → `\ytkt(Glitch)`; a short cursor ("_", "|"...) that moves along the line →
+  `\ytkt(Cursor,...)` (after what has already been sung) or `\ytkt(LCursor,...)` (before the syllable being sung), with the
+  interval and colors of each cursor;
+- the "trail" of copies of the same text, with no shadow and each in a different color, that spread out around the text before
+  it appears or after it disappears → `\ytchroma`.
 
-Tempos, raios e posições saem aproximados (o .ytt guarda posições em % inteiro e um estado a cada dois quadros).
-Na página: botão "Tentar recuperar tags originais (heurística)" em cada .ytt/.json3 convertido; a tabela de
-debug do preview mostra a mesma recuperação, com o motivo de cada tag. Na CLI:
+Timings, radii and positions come out approximate (the .ytt stores positions as whole percentages and one state every two frames).
+On the page: the "Try to recover original tags (heuristic)" button on each converted .ytt/.json3; the preview's
+debug table shows the same recovery, with the reason for each tag. In the CLI:
 
 ```sh
-node bin/ytsubconverter.js legenda.ytt legenda.recuperado.ass --recuperar-tags
+node bin/ytsubconverter.js subtitle.ytt subtitle.recovered.ass --recuperar-tags
 ```
 
-Estilos com mais de uma sombra vão também num `.StyleOptions.xml` para o YTSubConverter original; este port
-reconhece os tipos de sombra pelo nome do estilo quando não há StyleOptions para ele.
+Styles with more than one shadow also go into a `.StyleOptions.xml` for the original YTSubConverter; this port
+recognizes the shadow types from the style name when there's no StyleOptions for it.
 
-#### Comparar o original com o refeito
+#### Compare the original with the rebuilt version
 
-Depois de recuperar, o botão "Comparar original × refeito" converte o .ass recuperado de volta para .ytt e mostra
-os dois lado a lado, tocando juntos. A cada 100 ms as linhas na tela dos dois lados são emparelhadas (pelo texto e
-pela posição) e comparadas em texto, posição, cor e opacidade (`src/compare/compareYtt.js`). A página mostra a
-semelhança geral e por propriedade, uma barra de tempo com a semelhança e o tipo de diferença em cada ponto, botões
-para pular entre as diferenças e, no instante atual, o que difere em cada linha (contorno laranja: linha diferente;
-vermelho: linha que só existe de um lado). A CLI com `--recuperar-tags` também imprime a semelhança.
+After recovery, the "Compare original × rebuilt" button converts the recovered .ass back to .ytt and shows
+both side by side, playing in sync. Every 100 ms, the on-screen lines from both sides are paired (by text and
+position) and compared by text, position, color and opacity (`src/compare/compareYtt.js`). The page shows the
+overall and per-property similarity, a time bar with the similarity and type of difference at each point, buttons
+to jump between differences and, for the current instant, what differs in each line (orange outline: different line;
+red: line that exists on only one side). The CLI with `--recuperar-tags` also prints the similarity.
 
-## Testes
+## Tests
 
 ```sh
 npm test
 ```
 
-`test/files/ass/` contém os arquivos de teste do projeto original (`X.ass` e o `X.ytt` esperado,
-gerados pelo programa em C#). Eles são comparados byte a byte nos dois sentidos (.ass → .ytt e .ytt → .ass → .ytt).
+`test/files/ass/` contains the original project's test files (`X.ass` and the expected `X.ytt`,
+generated by the C# program). They are compared byte by byte in both directions (.ass → .ytt and .ytt → .ass → .ytt).
 
-## Licença
+## License
 
-O YTSubConverter original é MIT (© 2018 arcusmaximus); veja `LICENSE-YTSubConverter`.
-Os arquivos de teste e os recursos em `src/resources/` vêm dele.
+The original YTSubConverter is MIT (© 2018 arcusmaximus); see `LICENSE-YTSubConverter`.
+The test files and the resources in `src/resources/` come from it.

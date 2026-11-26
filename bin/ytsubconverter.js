@@ -3,10 +3,15 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { extname } from 'node:path';
 import { loadDocument, convertDocument } from '../src/convert.js';
+import { canFixMassiveDuplication, fixMassiveDuplication } from '../src/dedup.js';
 
-const [input, outputArg] = process.argv.slice(2);
+// --corrigir-duplicacao: entrada .ytt/.json3 com a mesma frase repetida quadro a quadro vira uma linha por frase
+const DEDUP_FLAG = '--corrigir-duplicacao';
+const argv = process.argv.slice(2);
+const fixDuplication = argv.includes(DEDUP_FLAG);
+const [input, outputArg] = argv.filter((a) => a !== DEDUP_FLAG);
 if (!input || input === '-h' || input === '--help') {
-  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)]');
+  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--corrigir-duplicacao]');
   process.exit(input ? 0 : 1);
 }
 
@@ -17,6 +22,7 @@ const output = outputArg ?? base.slice(0, base.length - inputExt.length) + (['.y
 
 try {
   const doc = await loadDocument(input, readFileSync(input));
+  if (fixDuplication && canFixMassiveDuplication(doc)) fixMassiveDuplication(doc);
   const result = convertDocument(doc, extname(output));
   writeFileSync(output, result.save({ bom: true }), 'utf8');
   console.log(`${input} -> ${output}`);

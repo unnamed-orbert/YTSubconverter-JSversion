@@ -2,10 +2,12 @@
 import { loadDocument, convertDocument, isExtensionSupported } from '../src/convert.js';
 import { YttDocument } from '../src/formats/ytt.js';
 import { YttPreview } from './preview.js';
+import { canFixMassiveDuplication, fixMassiveDuplication } from '../src/dedup.js';
 
 const drop = document.getElementById('drop');
 const input = document.getElementById('file');
 const format = document.getElementById('format');
+const fixDuplication = document.getElementById('fixDuplication');
 const results = document.getElementById('results');
 const preview = new YttPreview(document.getElementById('preview'));
 
@@ -29,6 +31,7 @@ function extOf(name) {
  * @returns {Promise<{download: {name: string, blob: Blob}, ytt: string | Uint8Array}>}
  */
 async function convertFile(file, targetExt) {
+  const dedup = fixDuplication.checked;
   const fullExt = extOf(file.name);
   const ext = fullExt.replace(/\.txt$/, '') || fullExt;
   // Um .txt qualquer ainda pode ser json3 ou .ytt: loadDocument reconhece pelo conteúdo.
@@ -37,21 +40,29 @@ async function convertFile(file, targetExt) {
   const isYtt = YTT_EXTENSIONS.includes(ext);
 
   // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio.
-  if (isYtt && YTT_EXTENSIONS.includes(targetExt)) {
+  // Com "Corrigir duplicação massiva" ligado o arquivo muda, então passa pela conversão.
+  if (isYtt && YTT_EXTENSIONS.includes(targetExt) && !dedup) {
     return { download: { name: file.name, blob: file }, ytt: content };
   }
 
   const name = file.name.slice(0, file.name.length - fullExt.length) + targetExt;
-  const text = convertDocument(await loadDocument('x' + ext, content), targetExt).save({ bom: true });
+  const text = convertDocument(await load(ext, content, dedup), targetExt).save({ bom: true });
   // O BOM vem como \uFEFF no texto; o Blob grava em UTF-8.
   const download = { name, blob: new Blob([text], { type: 'text/plain;charset=utf-8' }) };
 
   let ytt;
   if (YTT_EXTENSIONS.includes(targetExt)) ytt = text;
-  else if (isYtt) ytt = content;
+  else if (isYtt && !dedup) ytt = content;
   // save() altera o documento, então o .ytt do preview sai de uma leitura nova.
-  else ytt = convertDocument(await loadDocument('x' + ext, content), '.ytt').save();
+  else ytt = convertDocument(await load(ext, content, dedup), '.ytt').save();
   return { download, ytt };
+}
+
+/** Lê o arquivo e, se pedido e a entrada for .ytt/.json3, junta as cópias quadro a quadro. */
+async function load(ext, content, dedup) {
+  const doc = await loadDocument('x' + ext, content);
+  if (dedup && canFixMassiveDuplication(doc)) fixMassiveDuplication(doc);
+  return doc;
 }
 
 function addRow(fileName) {

@@ -36,7 +36,9 @@ button { font: inherit; font-weight: 600; padding: 6px 14px; border-radius: 8px;
 button:hover { border-color: var(--accent); }
 
 .preview { margin-top: 32px; outline: none; }
-.preview h2 { font-size: 1.15rem; margin: 0 0 12px; overflow-wrap: anywhere; }
+.preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px;
+  flex-wrap: wrap; margin: 0 0 12px; }
+.preview h2 { font-size: 1.15rem; margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .preview .title { font-weight: 400; color: var(--muted); }
 .stage { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 10px; cursor: pointer;
   background: linear-gradient(160deg, #4a5566 0%, #2a2f38 55%, #6b7a5e 100%); line-height: 1.25; }
@@ -66,3 +68,9 @@ button:hover { border-color: var(--accent); }
 /* Como no YouTube, enquanto os controles aparecem as legendas sobem para não ficarem embaixo deles. */
 .player.is-fs .cues { transition: bottom .3s; }
 .player.is-fs:not(.idle) .cues { bottom: 64px; }
+/* Celular: a barra de tempo ocupa uma linha inteira, botões e tempo embaixo. */
+@media (max-width: 520px) {
+  .controls { flex-wrap: wrap; }
+  .controls .seek { order: -1; flex-basis: 100%; }
+  .controls .time { margin-right: auto; }
+}

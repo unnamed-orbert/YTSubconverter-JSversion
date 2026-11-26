@@ -155,6 +155,7 @@ export class YttPreview {
     this.seek = root.querySelector('.seek');
     this.timeLabel = root.querySelector('.time');
     this.title = root.querySelector('.title');
+    this.downloadLink = root.querySelector('.download');
     this.player = root.querySelector('.player');
     this.fsBtn = root.querySelector('.fs');
     this.lines = [];
@@ -241,10 +242,20 @@ export class YttPreview {
     return Boolean(this.video.src);
   }
 
-  /** @param {import('../src/formats/ytt.js').YttDocument} doc */
-  show(doc, name) {
+  /**
+   * @param {import('../src/formats/ytt.js').YttDocument} doc
+   * @param {string} name
+   * @param {{name: string, url: string} | null} [download] arquivo convertido, oferecido ao lado do preview
+   */
+  show(doc, name, download = null) {
     this.lines = doc.lines.filter((l) => l.end > l.start && l.text.trim() !== '');
     this.title.textContent = name;
+    this.downloadLink.hidden = !download;
+    if (download) {
+      this.downloadLink.href = download.url;
+      this.downloadLink.download = download.name;
+      this.downloadLink.textContent = `Baixar ${download.name}`;
+    }
     this.lastKey = null;
     this.root.hidden = false;
     this.updateDuration();

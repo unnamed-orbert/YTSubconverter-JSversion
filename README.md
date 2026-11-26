@@ -1,5 +1,7 @@
 # ytsubconverter-js
 
+**Use it online:** https://petekamusic.com.br/
+
 JavaScript port (Node.js 18+, ESM, no dependencies) of
 [YTSubConverter](https://github.com/arcusmaximus/YTSubConverter), which converts subtitles
 to YouTube's `.ytt` (srv3) format, preserving colors, positions, shadows, karaoke, etc.
@@ -32,6 +34,8 @@ const doc = YttDocument.parse(yttText); // reads .ytt/.srv3 (undoes the writer's
 
 ## Web page
 
+The page is hosted at **https://petekamusic.com.br/**: open it in the browser, no installation needed.
+
 `index.html` is a simple page: drag in an `.srt`, `.sbv` or `.ass` subtitle and download the `.ytt`
 (or `.srt`). It runs entirely in the browser using the same modules from `src/`, with no server
 and without sending the file anywhere.
@@ -43,7 +47,7 @@ the subtitles on top of it, including in fullscreen ("Fullscreen" button, F key 
 of the YouTube player; tricks that depend on exactly how YouTube renders things (for example, multiple
 shadows on the same line) may look slightly different.
 
-Because it uses JavaScript modules, the page must be opened over HTTP, not by double-clicking the file:
+To host your own copy: because it uses JavaScript modules, the page must be opened over HTTP, not by double-clicking the file:
 
 - **GitHub Pages:** under *Settings → Pages*, choose *Deploy from a branch*, branch `main`, folder `/ (root)`.
   The page will be at `https://<user>.github.io/<repository>/`.

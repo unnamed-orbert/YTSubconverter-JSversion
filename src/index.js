@@ -6,4 +6,5 @@ export { SubtitleDocument } from './formats/subtitleDocument.js';
 export { SrtDocument, SbvDocument } from './formats/srt.js';
 export { YttDocument } from './formats/ytt.js';
 export { Json3Document, json3ToSrv3 } from './formats/json3.js';
-export { loadDocument, convertDocument, isExtensionSupported } from './convert.js';
+export { loadDocument, convertDocument, isExtensionSupported, getInputFormat } from './convert.js';
+export { detectFormat, InputFormat } from './detect.js';

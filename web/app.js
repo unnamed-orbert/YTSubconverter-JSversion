@@ -1,5 +1,6 @@
 // Página do conversor: roda tudo no navegador com os mesmos módulos do port (sem servidor).
-import { loadDocument, convertDocument, isExtensionSupported } from '../src/convert.js';
+import { loadDocument, convertDocument, getInputFormat } from '../src/convert.js';
+import { InputFormat } from '../src/detect.js';
 import { YttDocument } from '../src/formats/ytt.js';
 import { YttPreview } from './preview.js';
 
@@ -13,41 +14,35 @@ const preview = new YttPreview(document.getElementById('preview'));
 
 const YTT_EXTENSIONS = ['.ytt', '.srv3'];
 
-/** Extensão do arquivo; "legenda.json3.txt" conta como ".json3.txt" (o .txt é ignorado se o de antes for conhecido). */
-function extOf(name) {
-  const i = name.lastIndexOf('.');
-  if (i < 0) return '';
-  const ext = name.slice(i).toLowerCase();
-  if (ext === '.txt') {
-    const j = name.lastIndexOf('.', i - 1);
-    if (j >= 0 && isExtensionSupported(name.slice(j, i))) return name.slice(j).toLowerCase();
-  }
-  return ext;
+/** Nome sem a extensão ("legenda.json3.txt" -> "legenda"; sem extensão fica como está). */
+function baseName(name) {
+  return name.replace(/\.txt$/i, '').replace(/\.[a-z0-9]{1,5}$/i, '') || name;
 }
 
 /**
  * Converte um arquivo. Devolve o arquivo para baixar e o .ytt usado no preview.
+ * O formato de entrada é reconhecido pelo conteúdo (a extensão só é usada se o conteúdo não for reconhecido).
  * O preview sempre existe: se o destino não é .ytt, gera um .ytt só para mostrar.
  * @returns {Promise<{download: {name: string, blob: Blob}, ytt: string | Uint8Array}>}
  */
 async function convertFile(file, targetExt) {
   const cutoff = Number(fadeCutoff.value);
   const options = { fadeShadowCutoff: fadeShadows.checked && cutoff > 0 ? Math.min(cutoff, 100) : null };
-  const fullExt = extOf(file.name);
-  const ext = fullExt.replace(/\.txt$/, '') || fullExt;
-  // Um .txt qualquer ainda pode ser json3 ou .ytt: loadDocument reconhece pelo conteúdo.
-  if (!isExtensionSupported(ext) && ext !== '.txt') throw new Error(`Formato não suportado (${ext || 'sem extensão'}). Use .srt, .sbv, .ass, .ytt ou .json3.`);
   const content = new Uint8Array(await file.arrayBuffer());
-  const isYtt = YTT_EXTENSIONS.includes(ext);
+  const format = getInputFormat(file.name, content);
+  if (!format) throw new Error('Não reconheci o formato desta legenda. Use .srt, .sbv, .ass, .ytt/.srv3 ou json3.');
+  const isYtt = format === InputFormat.Ytt;
+  const name = baseName(file.name) + targetExt;
 
   // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio (a não ser que a opção do fade
   // esteja ligada, que muda as sombras).
   if (isYtt && YTT_EXTENSIONS.includes(targetExt) && options.fadeShadowCutoff == null) {
-    return { download: { name: file.name, blob: file }, ytt: content };
+    return { download: { name, blob: file }, ytt: content };
   }
 
-  const name = file.name.slice(0, file.name.length - fullExt.length) + targetExt;
-  const text = convertDocument(await loadDocument('x' + ext, content), targetExt, options).save({ bom: true });
+  const doc = await loadDocument(file.name, content);
+  if (doc.lines.length === 0) throw new Error('Nenhuma legenda encontrada neste arquivo.');
+  const text = convertDocument(doc, targetExt, options).save({ bom: true });
   // O BOM vem como \uFEFF no texto; o Blob grava em UTF-8.
   const download = { name, blob: new Blob([text], { type: 'text/plain;charset=utf-8' }) };
 
@@ -55,7 +50,7 @@ async function convertFile(file, targetExt) {
   if (YTT_EXTENSIONS.includes(targetExt)) ytt = text;
   else if (isYtt) ytt = content;
   // save() altera o documento, então o .ytt do preview sai de uma leitura nova.
-  else ytt = convertDocument(await loadDocument('x' + ext, content), '.ytt', options).save();
+  else ytt = convertDocument(await loadDocument(file.name, content), '.ytt', options).save();
   return { download, ytt };
 }
 

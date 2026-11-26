@@ -3,6 +3,7 @@
 // (trechos com startOffset), sub/sobrescrito, ruby e texto vertical. É uma aproximação: o resultado
 // final depende do player do YouTube.
 
+import { setText } from './i18n.js';
 import { AnchorPoint, HorizontalTextDirection, OffsetType, RubyPart, ShadowType, VerticalTextType } from '../src/enums.js';
 
 // Coordenadas dos .ytt lidos pelo port estão nesta resolução de referência.
@@ -226,7 +227,7 @@ export class YttPreview {
   onFullscreenChange() {
     const fs = this.isFullscreen;
     this.player.classList.toggle('is-fs', fs);
-    this.fsBtn.textContent = fs ? 'Sair da tela cheia' : 'Tela cheia';
+    setText(this.fsBtn, fs ? 'exitFullscreen' : 'fullscreen');
     this.showControls();
   }
 
@@ -254,7 +255,7 @@ export class YttPreview {
     if (download) {
       this.downloadLink.href = download.url;
       this.downloadLink.download = download.name;
-      this.downloadLink.textContent = `Baixar ${download.name}`;
+      setText(this.downloadLink, 'downloadFile', { name: download.name });
     }
     this.lastKey = null;
     this.root.hidden = false;
@@ -300,7 +301,7 @@ export class YttPreview {
   setPlaying(playing) {
     if (this.playing === playing) return;
     this.playing = playing;
-    this.playBtn.textContent = playing ? 'Pausar' : 'Tocar';
+    setText(this.playBtn, playing ? 'pause' : 'play');
     this.clockOrigin = performance.now() - this.time;
     if (playing) requestAnimationFrame(() => this.tick());
     this.showControls();

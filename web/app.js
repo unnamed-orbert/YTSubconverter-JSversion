@@ -4,6 +4,17 @@ import { InputFormat } from '../src/detect.js';
 import { YttDocument } from '../src/formats/ytt.js';
 import { YttPreview } from './preview.js';
 import { canFixMassiveDuplication, fixMassiveDuplication } from '../src/dedup.js';
+import { initI18n, setText } from './i18n.js';
+
+initI18n(document.getElementById('lang'));
+
+/** Erro com mensagem traduzível (chave em i18n.js). */
+class PageError extends Error {
+  constructor(key) {
+    super(key);
+    this.i18nKey = key;
+  }
+}
 
 const drop = document.getElementById('drop');
 const input = document.getElementById('file');
@@ -34,7 +45,7 @@ async function convertFile(file, targetExt) {
   const dedup = targetExt === '.srt' && fixDuplication.checked;
   const content = new Uint8Array(await file.arrayBuffer());
   const format = getInputFormat(file.name, content);
-  if (!format) throw new Error('Não reconheci o formato desta legenda. Use .srt, .sbv, .ass, .ytt/.srv3 ou json3.');
+  if (!format) throw new PageError('errUnknownFormat');
   const isYtt = format === InputFormat.Ytt;
   const name = baseName(file.name) + targetExt;
 
@@ -45,7 +56,7 @@ async function convertFile(file, targetExt) {
   }
 
   const doc = await load(file.name, content, dedup, true);
-  if (doc.lines.length === 0) throw new Error('Nenhuma legenda encontrada neste arquivo.');
+  if (doc.lines.length === 0) throw new PageError('errNoSubtitles');
   const text = convertDocument(doc, targetExt, options).save({ bom: true });
   // O BOM vem como \uFEFF no texto; o Blob grava em UTF-8.
   const download = { name, blob: new Blob([text], { type: 'text/plain;charset=utf-8' }) };
@@ -80,7 +91,7 @@ function addRow(fileName) {
   name.className = 'name';
   name.textContent = fileName;
   const status = document.createElement('span');
-  status.textContent = 'Convertendo…';
+  setText(status, 'converting');
   li.append(name, status);
   results.prepend(li);
   return { li, status };
@@ -98,26 +109,27 @@ async function handleFiles(files) {
     try {
       const { download, ytt } = await convertFile(file, targetExt);
       status.className = 'ok';
-      status.textContent = 'Pronto';
+      setText(status, 'done');
       const dl = { name: download.name, url: URL.createObjectURL(download.blob) };
       const open = () => showPreview(ytt, file.name, dl);
 
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.textContent = 'Ver preview';
+      setText(btn, 'viewPreview');
       btn.addEventListener('click', open);
       const a = document.createElement('a');
       a.className = 'btn';
       a.href = dl.url;
       a.download = dl.name;
-      a.textContent = `Baixar ${dl.name}`;
+      setText(a, 'downloadFile', { name: dl.name });
       li.append(btn, a);
 
       if (files.length === 1) open();
     } catch (err) {
       console.error(err);
       status.className = 'err';
-      status.textContent = `Erro: ${err.message}`;
+      // Erros da própria página são traduzidos; os da conversão aparecem como vieram.
+      setText(status, 'error', { message: err.i18nKey ? { key: err.i18nKey } : err.message });
     }
   }
 }

@@ -13,13 +13,30 @@ de `Math.Round`, `DateTime.AddMilliseconds` do .NET Framework e o `System.Random
 ```sh
 node bin/ytsubconverter.js legenda.srt          # gera legenda.ytt
 node bin/ytsubconverter.js legenda.ass saida.ytt
+node bin/ytsubconverter.js legenda.ytt          # gera legenda.srt
 node bin/ytsubconverter.js legenda.srt saida.ass   # .ass com os estilos YT* padrão
 ```
 
 ```js
 import { SrtDocument, YttDocument } from './src/index.js';
 const ytt = new YttDocument(SrtDocument.parse(textoSrt)).save();
+const doc = YttDocument.parse(textoYtt); // leitura de .ytt/.srv3 (desfaz os truques da escrita)
 ```
+
+## Página web
+
+`index.html` é uma página simples: arraste uma legenda `.srt`, `.sbv` ou `.ass` e baixe o `.ytt`
+(ou `.srt`). Ela roda inteiramente no navegador com os mesmos módulos de `src/`, sem servidor
+e sem enviar o arquivo para lugar nenhum.
+
+Como usa módulos JavaScript, a página precisa ser aberta por HTTP, não com duplo clique no arquivo:
+
+- **GitHub Pages:** em *Settings → Pages*, escolha *Deploy from a branch*, branch `main`, pasta `/ (root)`.
+  A página fica em `https://<usuário>.github.io/<repositório>/`.
+- **Localmente:** `npx serve .` (ou `python3 -m http.server`) na pasta do projeto e abra o endereço mostrado.
+
+`.ass` passa a funcionar na página assim que o leitor (`src/formats/ass/`) estiver no branch;
+até lá ela mostra um aviso.
 
 ## Estado
 
@@ -27,7 +44,7 @@ const ytt = new YttDocument(SrtDocument.parse(textoSrt)).save();
 |---|---|---|
 | .srt | ✅ | ✅ |
 | .sbv | ✅ | — (o original também não escreve) |
-| .ytt / .srv3 | ⏳ | ✅ |
+| .ytt / .srv3 | ✅ | ✅ |
 | .ass | ✅ | ✅ (sem o modo "visual" do `VisualizingAssDocument`) |
 | .ttml | ❌ | ❌ |
 
@@ -38,7 +55,7 @@ npm test
 ```
 
 `test/files/ass/` contém os arquivos de teste do projeto original (`X.ass` e o `X.ytt` esperado,
-gerados pelo programa em C#). Eles são comparados byte a byte assim que o leitor de `.ass` estiver integrado.
+gerados pelo programa em C#). Eles são comparados byte a byte nos dois sentidos (.ass → .ytt e .ytt → .ass → .ytt).
 
 ## Licença
 

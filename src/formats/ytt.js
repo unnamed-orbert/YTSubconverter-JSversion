@@ -2,20 +2,103 @@
 
 import { AnchorPoint, HorizontalTextDirection, OffsetType, RubyPart, ShadowType, VerticalTextType } from '../enums.js';
 import { Line, Section, SectionFormatComparer } from '../model.js';
-import { brighten, changeAlpha, Color, colorToHtml, isDark } from '../util/color.js';
-import { CharacterRange } from '../util/misc.js';
-import { f32, roundHalfEven } from '../util/numbers.js';
+import { brighten, changeAlpha, Color, colorFromHtml, colorToHtml, isDark } from '../util/color.js';
+import { CharacterRange, decodeText } from '../util/misc.js';
+import { f32, roundHalfEven, tryParseInt } from '../util/numbers.js';
 import { roundTimeToFrameCenter, TIME_BASE } from '../util/time.js';
+import { parseXml, XmlNodeType } from '../util/xml.js';
 import { SubtitleDocument } from './subtitleDocument.js';
 
 const ZERO_WIDTH_SPACE = '​';
 // Surrounded with zwsp's so it can be recognized and removed during reverse conversion
 const PADDING_SPACE = '​ ​';
 
+const REFERENCE_VIDEO_DIMENSIONS = { width: 1280, height: 720 };
+
 export class YttDocument extends SubtitleDocument {
   /** @param {SubtitleDocument} [doc] */
   constructor(doc) {
     super(doc);
+  }
+
+  /**
+   * Reads a .ytt/.srv3 file (YttDocument(TextReader) in the C# code).
+   * @param {string | Uint8Array} content
+   * @returns {YttDocument}
+   */
+  static parse(content) {
+    const doc = new YttDocument();
+    doc.load(decodeText(content));
+    return doc;
+  }
+
+  /** @param {string} text */
+  load(text) {
+    const root = parseXml(text);
+    this.videoDimensions = { ...REFERENCE_VIDEO_DIMENSIONS };
+
+    // XPath "/timedtext/head" and "/timedtext/body/p": names without a namespace
+    const isNamed = (elem, name) => elem.name === name && elem.namespaceUri === '';
+    const timedText = isNamed(root, 'timedtext') ? root : null;
+    const head = timedText?.children.find((e) => isNamed(e, 'head')) ?? null;
+    const { positions, windowStyles, pens } = this.readHead(head);
+
+    const paragraphs = (timedText?.children ?? []).filter((e) => isNamed(e, 'body')).flatMap((b) => b.children.filter((e) => isNamed(e, 'p')));
+
+    let awaitingAndroidHack = false;
+    for (const elem of paragraphs) {
+      const line = readLine(elem, positions, windowStyles, pens);
+      if (line.sections.some((s) => isDark(s.foreColor))) {
+        awaitingAndroidHack = true;
+      } else if (awaitingAndroidHack) {
+        awaitingAndroidHack = false;
+
+        // Skip the invisible bright copy that the writer adds after dark text (see expandLineForDarkText)
+        const prevLine = this.lines[this.lines.length - 1];
+        if (
+          line.sections.every((s) => !isDark(s.foreColor) && s.foreColor.a === 0 && s.backColor.a === 0 && s.shadowColors.size === 0) &&
+          line.start === prevLine.start && line.end === prevLine.end && line.text === prevLine.text
+        )
+          continue;
+
+        prevLine.androidDarkTextHackAllowed = false;
+      }
+
+      this.lines.push(line);
+    }
+
+    if (awaitingAndroidHack) this.lines[this.lines.length - 1].androidDarkTextHackAllowed = false;
+
+    this.mergeIdenticallyFormattedSections();
+  }
+
+  readHead(headElement) {
+    const positions = [];
+    const windowStyles = [];
+    const pens = [];
+    if (headElement != null) {
+      for (const elem of headElement.children) {
+        switch (elem.localName) {
+          case 'wp': setItemAtIndexSafe(positions, this.readWindowPosition(elem)); break;
+          case 'ws': setItemAtIndexSafe(windowStyles, readWindowStyle(elem)); break;
+          case 'pen': setItemAtIndexSafe(pens, readPen(elem)); break;
+        }
+      }
+    }
+    return { positions, windowStyles, pens };
+  }
+
+  readWindowPosition(elem) {
+    const id = getIntAttribute(elem, 'id') ?? 0;
+    const position = new Line(TIME_BASE, TIME_BASE);
+    position.anchorPoint = getAnchorPointFromId(getIntAttribute(elem, 'ap') ?? 7);
+    const ah = getIntAttribute(elem, 'ah') ?? 0;
+    const av = getIntAttribute(elem, 'av') ?? 0;
+    position.position = {
+      x: getPixelCoord(ah, this.videoDimensions.width),
+      y: getPixelCoord(av, this.videoDimensions.height),
+    };
+    return [id, position];
   }
 
   /**
@@ -296,6 +379,215 @@ export class YttDocument extends SubtitleDocument {
   linePositionKey(line) {
     const pos = this.getYouTubePosition(line);
     return `${line.anchorPoint}|${pos.x}|${pos.y}`;
+  }
+}
+
+// ---------------------------------------------------------------- reading helpers
+
+/** XmlExtensions.GetIntAttribute: null if the attribute is missing, empty or not an int. */
+function getIntAttribute(elem, name) {
+  const value = elem.getAttribute(name);
+  if (value == null || value === '') return null;
+  return tryParseInt(value);
+}
+
+function getItemAtIndexSafe(list, index) {
+  return index != null && index >= 0 && index < list.length ? list[index] : null;
+}
+
+function setItemAtIndexSafe(list, [index, item]) {
+  // A negative id throws in C# (ArgumentOutOfRangeException from the list indexer)
+  if (index < 0) throw new RangeError(`Invalid id: ${index}`);
+  while (list.length <= index) list.push(null);
+  list[index] = item;
+}
+
+function readWindowStyle(elem) {
+  const id = getIntAttribute(elem, 'id') ?? 0;
+  const windowStyle = new Line(TIME_BASE, TIME_BASE);
+  const printDirection = getIntAttribute(elem, 'pd') ?? 0;
+  const scrollDirection = getIntAttribute(elem, 'sd') ?? 0;
+  [windowStyle.horizontalTextDirection, windowStyle.verticalTextType] = getTextDirections(printDirection, scrollDirection);
+  return [id, windowStyle];
+}
+
+function readPen(elem) {
+  const id = getIntAttribute(elem, 'id') ?? 0;
+  const pen = new Section();
+
+  pen.font = getFontName(getIntAttribute(elem, 'fs') ?? 0);
+  pen.scale = getRealFontScale(getIntAttribute(elem, 'sz') ?? 100);
+
+  pen.offset = getOffsetType(getIntAttribute(elem, 'of') ?? 1);
+  pen.bold = (getIntAttribute(elem, 'b') ?? 0) !== 0;
+  pen.italic = (getIntAttribute(elem, 'i') ?? 0) !== 0;
+  pen.underline = (getIntAttribute(elem, 'u') ?? 0) !== 0;
+
+  const fc = colorFromHtml(elem.getAttribute('fc') ?? '#FFFFFF');
+  const fo = getIntAttribute(elem, 'fo') ?? 254;
+  pen.foreColor = changeAlpha(fc, fo);
+
+  const bc = colorFromHtml(elem.getAttribute('bc') ?? '#080808');
+  const bo = getIntAttribute(elem, 'bo') ?? 192;
+  pen.backColor = changeAlpha(bc, bo);
+
+  const et = getIntAttribute(elem, 'et') ?? 0;
+  if (et !== 0) {
+    const shadowType = getEdgeType(et);
+    const ec = elem.getAttribute('ec');
+    let shadowColor;
+    if (ec != null) {
+      shadowColor = changeAlpha(colorFromHtml(ec), 254);
+    } else {
+      // Color.FromArgb(int, int, int, int) throws for components outside 0-255
+      if (fo < 0 || fo > 255) throw new RangeError(`Invalid opacity: ${fo}`);
+      shadowColor = Color.fromArgb(fo, 0x22, 0x22, 0x22);
+    }
+    pen.shadowColors.set(shadowType, shadowColor);
+  }
+
+  pen.rubyPart = getRubyPart(getIntAttribute(elem, 'rb') ?? 0);
+  pen.packed = (getIntAttribute(elem, 'hg') ?? 0) !== 0;
+  return [id, pen];
+}
+
+function readLine(elem, positions, windowStyles, pens) {
+  let t = getIntAttribute(elem, 't') ?? 0;
+  let d = getIntAttribute(elem, 'd') ?? 5000;
+  if (t === 1) {
+    // Reverse Android workaround (see writeLine)
+    t--;
+    d++;
+  }
+
+  const start = TIME_BASE + t;
+  const line = new Line(start, start + d);
+
+  const position = getItemAtIndexSafe(positions, getIntAttribute(elem, 'wp'));
+  if (position != null) {
+    line.anchorPoint = position.anchorPoint;
+    line.position = position.position;
+  }
+
+  const windowStyle = getItemAtIndexSafe(windowStyles, getIntAttribute(elem, 'ws'));
+  if (windowStyle != null) {
+    line.horizontalTextDirection = windowStyle.horizontalTextDirection;
+    line.verticalTextType = windowStyle.verticalTextType;
+  }
+
+  const linePen = getItemAtIndexSafe(pens, getIntAttribute(elem, 'p'));
+  for (const node of elem.childNodes) {
+    if (node.nodeType === XmlNodeType.Text) line.sections.push(readTextSection(node, linePen));
+    else if (node.nodeType === XmlNodeType.Element) line.sections.push(readElementSection(node, pens, linePen));
+  }
+  undoWorkarounds(line);
+  return line;
+}
+
+/** Reverts the padding sections and karaoke tweaks added by the writer. */
+function undoWorkarounds(line) {
+  let i = 0;
+  let prevStartOffset = 0;
+  while (i < line.sections.length) {
+    const section = line.sections[i];
+    if (/^[\r\n]+$/.test(section.text) && line.sections.length > 1) {
+      if ((i > 0 && line.sections[i - 1].scale === section.scale) || i === line.sections.length - 1)
+        line.sections[i - 1].text += section.text;
+      else
+        line.sections[i + 1].text = section.text + line.sections[i + 1].text;
+
+      section.text = '';
+    }
+
+    if (section.startOffset - prevStartOffset < 10) {
+      section.startOffset = prevStartOffset;
+      if (i > 0 && line.sections[i - 1].text.length === 0) {
+        line.sections.splice(i - 1, 1);
+        continue;
+      }
+      if (section.text.length === 0) {
+        line.sections.splice(i, 1);
+        continue;
+      }
+    } else {
+      prevStartOffset = section.startOffset;
+    }
+    i += section.rubyPart === RubyPart.Base ? 4 : 1;
+  }
+}
+
+function cleanText(text) {
+  return toCrlf(text.replaceAll(PADDING_SPACE, '').replaceAll(ZERO_WIDTH_SPACE, ''));
+}
+
+/** StringExtensions.ToCrlf */
+function toCrlf(str) {
+  return str.replace(/(?<!\r)\n/g, '\r\n').replace(/\r(?!\n)/g, '\r\n');
+}
+
+function readTextSection(node, linePen) {
+  const section = linePen?.clone() ?? createDefaultSection();
+  section.text = cleanText(node.value);
+  return section;
+}
+
+function readElementSection(elem, pens, linePen) {
+  const pen = getItemAtIndexSafe(pens, getIntAttribute(elem, 'p')) ?? linePen;
+  const section = pen?.clone() ?? createDefaultSection();
+  section.text = cleanText(elem.innerText);
+
+  const startOffsetMs = getIntAttribute(elem, 't');
+  if (startOffsetMs != null) section.startOffset = startOffsetMs;
+  return section;
+}
+
+function createDefaultSection() {
+  const section = new Section();
+  section.font = 'Roboto';
+  section.backColor = Color.fromArgb(192, 8, 8, 8);
+  section.foreColor = Color.fromArgb(255, 255, 255);
+  return section;
+}
+
+function getPixelCoord(youtubeCoord, maxValue) {
+  return f32(f32(f32(2 + f32(youtubeCoord * f32(0.96))) / 100) * maxValue);
+}
+
+function getTextDirections(printDirectionId, scrollDirectionId) {
+  switch (printDirectionId) {
+    case 1: return [HorizontalTextDirection.RightToLeft, VerticalTextType.None];
+    case 2: return [scrollDirectionId === 0 ? HorizontalTextDirection.RightToLeft : HorizontalTextDirection.LeftToRight, VerticalTextType.Positioned];
+    case 3: return [scrollDirectionId === 0 ? HorizontalTextDirection.LeftToRight : HorizontalTextDirection.RightToLeft, VerticalTextType.Rotated];
+    default: return [HorizontalTextDirection.LeftToRight, VerticalTextType.None];
+  }
+}
+
+function getEdgeType(id) {
+  switch (id) {
+    case 1: return ShadowType.HardShadow;
+    case 2: return ShadowType.Bevel;
+    case 3: return ShadowType.Glow;
+    case 4: return ShadowType.SoftShadow;
+    default: throw new RangeError(`Invalid edge type id: ${id}`);
+  }
+}
+
+function getOffsetType(id) {
+  switch (id) {
+    case 0: return OffsetType.Subscript;
+    case 1: return OffsetType.Regular;
+    case 2: return OffsetType.Superscript;
+    default: throw new RangeError(`Invalid offset type id: ${id}`);
+  }
+}
+
+function getRubyPart(id) {
+  switch (id) {
+    case 1: return RubyPart.Base;
+    case 2: return RubyPart.Parenthesis;
+    case 4: return RubyPart.TextBefore;
+    case 5: return RubyPart.TextAfter;
+    default: return RubyPart.None;
   }
 }
 

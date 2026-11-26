@@ -239,7 +239,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.ass')).sort()) {
 
 // ---------------------------------------------------------------------------------------------
 // TestReverseConversion of the original project: X.ytt -> AssDocument -> .ass -> read -> .ytt must equal X.ytt
-// (with timestamps rounded to frame centers). Needs the .ytt reader, which is developed separately.
+// (with timestamps rounded to frame centers), byte for byte.
 const yttReader = typeof YttDocument.parse === 'function' ? (text) => YttDocument.parse(text) : null;
 
 function roundYttTimestamps(xml) {

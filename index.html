@@ -32,21 +32,29 @@
         <option value=".srt" data-i18n="optSrt">.srt (texto simples)</option>
       </select>
     </label>
+    
+        <label class="check" data-i18n-title="dedupTitle">
+      <input type="checkbox" id="fixDuplication" checked> <span data-i18n="dedupLabel">Corrigir duplicação massiva (.json3/.ytt para .srt)</span>
+    </label>
+    
     <label class="check" data-i18n-title="fadeTitle">
       <input type="checkbox" id="fadeShadows"> <span data-i18n="fadeBefore">No fade, tirar sombra/contorno abaixo de</span>
       <input type="number" id="fadeCutoff" value="40" min="1" max="100" step="1"><span data-i18n="fadeAfter">% de opacidade</span>
     </label>
+    
     <label class="check" data-i18n-title="hierarchyTitle">
       <input type="checkbox" id="tagHierarchy" checked> <span data-i18n="hierarchyLabel">Hierarquia de tags (fade + karaokê + chroma, contorno vai para a cor do texto no fade)</span>
     </label>
+    
     <label class="check" data-i18n-title="captureTitle">
       <span data-i18n="captureLabel">Raio de captura do \ytchroma (recuperar tags)</span>
       <input type="number" id="captureRadius" value="40" min="5" max="400" step="5"><span>px</span>
     </label>
-    <label class="check" data-i18n-title="dedupTitle">
-      <input type="checkbox" id="fixDuplication" checked> <span data-i18n="dedupLabel">Corrigir duplicação massiva (.json3/.ytt para .srt)</span>
-    </label>
+    
+
+    
     <button type="button" id="refresh" hidden data-i18n="refreshBtn" data-i18n-title="refreshTitle">Atualizar arquivos</button>
+    
   </div>
 
   <ul id="results"></ul>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conversor de legendas</title>
+<link rel="stylesheet" href="web/style.css">
+</head>
+<body>
+<main>
+  <h1>Conversor de legendas para o YouTube</h1>
+  <p class="sub">Arraste uma legenda <b>.srt</b>, <b>.sbv</b> ou <b>.ass</b> e baixe o <b>.ytt</b> pronto para enviar ao YouTube.
+    Tudo acontece no seu navegador: o arquivo não é enviado para lugar nenhum.</p>
+
+  <label id="drop" class="drop" tabindex="0">
+    <input id="file" type="file" accept=".srt,.sbv,.ass" multiple hidden>
+    <span class="big">Solte os arquivos aqui</span>
+    <span>ou clique para escolher</span>
+  </label>
+
+  <div class="options">
+    <label>Converter para
+      <select id="format">
+        <option value=".ytt" selected>.ytt (YouTube, com estilos)</option>
+        <option value=".srt">.srt (texto simples)</option>
+      </select>
+    </label>
+  </div>
+
+  <ul id="results"></ul>
+
+  <noscript><p class="err">Esta página precisa de JavaScript.</p></noscript>
+  <p id="filewarn" class="err" hidden>Abra esta página por um servidor (por exemplo o GitHub Pages);
+    abrindo o arquivo direto do disco o navegador bloqueia os módulos JavaScript.</p>
+
+  <footer>Port em JavaScript do <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a>.</footer>
+</main>
+<script>if (location.protocol === 'file:') document.getElementById('filewarn').hidden = false;</script>
+<script type="module" src="web/app.js"></script>
+</body>
+</html>

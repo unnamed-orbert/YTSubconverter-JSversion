@@ -400,6 +400,12 @@ const complexFadeTag = {
   affectsWholeLine: true,
   handle(context, arg) {
     const args = parseFloatList(arg);
+    // Extensão do port: \\fade(entrada,saída) com 2 valores é um sinônimo de \\fad no libass/VSFilter (o Aegisub
+    // mostra o fade); no C# ele era ignorado e a linha ficava sem fade.
+    if (args != null && args.length === 2) {
+      simpleFadeTag.handle(context, arg);
+      return;
+    }
     if (args == null || args.length !== 7) return;
 
     const line = context.line;

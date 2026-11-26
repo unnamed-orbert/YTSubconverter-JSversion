@@ -95,3 +95,11 @@ test('várias sombras: as cópias do .ytt não somam a opacidade do texto', asyn
   const target = single[0][0].foreColor.a / 255;
   assert.ok(Math.abs(combined - target) < 0.02, `${combined} vs ${target}`);
 });
+
+test('\\fade com 2 valores funciona como \\fad (libass), também com karaokê', async () => {
+  const line = (tag) => `Dialogue: 0,0:00:00.00,0:00:03.00,Preto,,0,0,0,,{${tag}}{\\k50}Ka{\\k50}ra{\\k50}o{\\k50}kê\n`;
+  const fade = await convert(line('\\fade(300,300)'), true);
+  const fad = await convert(line('\\fad(300,300)'), true);
+  assert.equal(fade, fad);
+  assert.ok(pens(fade).some((p) => fo(p) > 0 && fo(p) < 200), 'tem quadros do fade');
+});

@@ -36,3 +36,23 @@ test('a linha que começa depois das cópias de entrada continua o karaokê', as
   for (const text of await visibleAt('\\ytchroma(400,0)', 1300)) assert.equal(text, 'Eu sou');
   for (const text of await visibleAt('\\ytchroma(400,0)', 1500)) assert.equal(text, 'Eu sou a');
 });
+
+test('\\ytkt(Fade) + \\ytchroma + \\fad: as cópias ficam na cor do chroma, com o fade', async () => {
+  const tags = '\\ytkt(Fade)\\ytchroma(&H0000FF&,&H00FF00&,&HFF0000&,7F,15,0,400,400)\\fad(300,200)';
+  const ytt = convertDocument(await loadDocument('k.ass', ass(tags).replace('&HFF000000', '&H00FFFFFF')), '.ytt').save();
+  const lines = YttDocument.parse(ytt).lines;
+  const copies = lines.filter((l) => l.start < 1400 || l.start >= 2600);
+  assert.ok(copies.length > 0);
+  const chroma = new Set(['ff0000', '00ff00', '0000ff']);
+  for (const l of copies) {
+    for (const s of l.sections) {
+      if (s.foreColor.a === 0) continue;
+      const rgb = [s.foreColor.r, s.foreColor.g, s.foreColor.b].map((v) => v.toString(16).padStart(2, '0')).join('');
+      assert.ok(chroma.has(rgb), `cópia em ${l.start} ms com a cor ${rgb} ("${s.text}")`);
+      assert.equal(s.shadowColors.size, 0);
+    }
+  }
+  // O \fad continua valendo: a primeira cópia ainda está quase transparente
+  const first = lines.filter((l) => l.start === Math.min(...lines.map((x) => x.start)));
+  assert.ok(first.every((l) => l.sections.every((s) => s.foreColor.a < 40)));
+});

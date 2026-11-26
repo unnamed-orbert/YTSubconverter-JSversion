@@ -578,11 +578,26 @@ function* createChromaLines(originalLine, colors, center, maxOffsetX, maxOffsetY
     if (colors[i].a === 0) continue;
 
     const chromaLine = originalLine.clone();
+    const tint = (c) => Color.fromArgb(toInt(f32(c.a * f32(colors[i].a / 255))), colors[i].r, colors[i].g, colors[i].b);
     for (const section of chromaLine.sections) {
-      const alpha = toInt(f32(section.foreColor.a * f32(colors[i].a / 255)));
-      section.foreColor = Color.fromArgb(alpha, colors[i].r, colors[i].g, colors[i].b);
+      section.foreColor = tint(section.foreColor);
       section.backColor = Color.Empty;
       section.shadowColors.clear();
+      // Extension of the port: in C# the karaoke (unsung text in \\2c, \\ytkt(Fade) going from \\2c to \\1c) and
+      // \\t color animations paint the copies back in the line's own colors, which hides the chroma effect.
+      // The copies keep the karaoke and the animations, but only their opacity: the color is the chroma color.
+      if (!section.secondaryColor.isEmpty) section.secondaryColor = tint(section.secondaryColor);
+      if (!section.currentWordForeColor.isEmpty) section.currentWordForeColor = tint(section.currentWordForeColor);
+      section.currentWordOutlineColor = Color.Empty;
+      section.currentWordShadowColor = Color.Empty;
+      section.animations = section.animations
+        .filter((a) => !(a instanceof ShadowColorAnimation) && !(a instanceof BackColorAnimation))
+        .map((a) => {
+          if (a instanceof ForeColorAnimation) return new ForeColorAnimation(a.startTime, tint(a.startColor), a.endTime, tint(a.endColor), a.acceleration);
+          if (a instanceof SecondaryColorAnimation)
+            return new SecondaryColorAnimation(a.startTime, tint(a.startColor), a.endTime, tint(a.endColor), a.acceleration);
+          return a;
+        });
     }
 
     const offsetFactor = colors.length > 1 ? f32(i / (colors.length - 1)) : f32(0.5);

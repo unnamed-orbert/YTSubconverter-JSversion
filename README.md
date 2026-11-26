@@ -84,6 +84,31 @@ Isso é automático para a saída .srt (na página, a caixa "Corrigir duplicaç�
 desligar: desmarque a caixa, ou `--manter-duplicacao` na CLI. Para saída .ytt/.ass a legenda não é mexida,
 a não ser com `--corrigir-duplicacao` na CLI.
 
+### Recuperar as tags originais (.ytt/.json3 → .ass)
+
+A conversão comum .ytt → .ass devolve cada quadro da animação como uma linha. `src/recover/recoverTags.js`
+(extensão, não existe no original) faz o caminho inverso do `Animator.cs` e tenta reconstruir o .ass de origem:
+
+- junta as cópias de uma linha feitas para cada tipo de sombra num estilo só (`YTGlowSoftShadowHardShadowBevel`...);
+- junta os quadros seguidos com o mesmo texto numa linha, e as linhas em frases no esquema do deduplicador;
+- olha a linha inteira: opacidade de todas as letras juntas → `\fad`/`\fade`, posição em linha reta → `\move`,
+  posição pulando em volta de um ponto → `\ytshake`;
+- olha cada letra/sílaba: troca de cor em sequência → `\k` (e `\ytkt(Fade)` se a troca é gradual), o atributo
+  `t` do karaokê nativo → `\k`, mudanças em momentos diferentes → um `\t` por trecho;
+- o "rastro" de cópias do mesmo texto, sem sombra e cada uma de uma cor, que se separam em volta do texto antes
+  de ele aparecer ou depois de ele sumir → `\ytchroma`.
+
+Tempos, raios e posições saem aproximados (o .ytt guarda posições em % inteiro e um estado a cada dois quadros).
+Na página: botão "Tentar recuperar tags originais (heurística)" em cada .ytt/.json3 convertido; a tabela de
+debug do preview mostra a mesma recuperação, com o motivo de cada tag. Na CLI:
+
+```sh
+node bin/ytsubconverter.js legenda.ytt legenda.recuperado.ass --recuperar-tags
+```
+
+Estilos com mais de uma sombra vão também num `.StyleOptions.xml` para o YTSubConverter original; este port
+reconhece os tipos de sombra pelo nome do estilo quando não há StyleOptions para ele.
+
 ## Testes
 
 ```sh

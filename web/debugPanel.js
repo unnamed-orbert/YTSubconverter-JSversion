@@ -7,6 +7,7 @@ import { HorizontalTextDirection, OffsetType, RubyPart, VerticalTextType } from 
 import {
   anNumber, buildTracks, describeEffects, groupLayers, groupShadows, guessAssTags, hexColor, opacityPercent,
 } from './debugInfo.js';
+import { recoverTags } from '../src/recover/recoverTags.js';
 
 const STORAGE_KEY = 'ytsub-debug';
 /** Grupos mostrados no máximo (arquivos com muitas camadas podem ter dezenas de linhas ao mesmo tempo). */
@@ -66,6 +67,8 @@ export class DebugPanel {
     this.table = root.querySelector('.debug-table');
     this.copyBtn = root.querySelector('.debug-copy');
     this.tracks = null;
+    /** @type {Map<number, object> | null} linha -> evento recuperado (src/recover/recoverTags.js) */
+    this.recovered = null;
     this.timer = null;
     this.lastUpdate = 0;
 
@@ -96,6 +99,22 @@ export class DebugPanel {
   /** Arquivo novo no preview: as trilhas são calculadas de novo quando a tabela for usada. */
   reset() {
     this.tracks = null;
+    this.recovered = null;
+  }
+
+  /** Tags recuperadas pela mesma heurística do botão "Tentar recuperar tags originais" (por linha). */
+  recoveredFor(lineIndex) {
+    if (!this.recovered) {
+      this.recovered = new Map();
+      try {
+        for (const event of recoverTags({ lines: this.preview.lines }).events) {
+          for (const i of event.sourceLines) this.recovered.set(i, event);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    return this.recovered.get(lineIndex) ?? null;
   }
 
   /** Chamado pelo preview quando muda o que está na tela. */
@@ -165,10 +184,17 @@ export class DebugPanel {
     const posCell = span(el('td', 'mono'));
     posCell.append(`\\an${anNumber(line.anchorPoint)}`, el('br'),
       line.position ? `${Math.round(line.position.x * 10) / 10}, ${Math.round(line.position.y * 10) / 10}` : t('dbgDefaultPos'));
-    const effects = describeEffects(lines, group, track);
     const effCell = span(el('td', 'effects'));
-    if (effects.length === 0) effCell.textContent = t('dbgStatic');
-    for (const e of effects) effCell.append(el('div', null, t(e.key, e.params)));
+    const recoveredEvent = this.recoveredFor(group[0]);
+    if (recoveredEvent) {
+      // Os efeitos da recuperação de tags (a mesma do botão), que olha a linha inteira e cada sílaba
+      if (recoveredEvent.tags.length === 0) effCell.textContent = t('dbgStatic');
+      for (const tag of recoveredEvent.tags) effCell.append(el('div', null, tag.text));
+    } else {
+      const effects = describeEffects(lines, group, track);
+      if (effects.length === 0) effCell.textContent = t('dbgStatic');
+      for (const e of effects) effCell.append(el('div', null, t(e.key, e.params)));
+    }
 
     line.sections.forEach((s, i) => {
       const tr = el('tr');
@@ -219,7 +245,15 @@ export class DebugPanel {
     const tagRow = el('tr', 'tags');
     const tagCell = el('td');
     tagCell.colSpan = COLUMNS.length;
-    tagCell.append(el('span', 'tags-label', t('dbgAssGuess')), ' ', el('code', null, guessAssTags(lines, group, track?.info)));
+    const recovered = recoveredEvent;
+    if (recovered) {
+      // Mesma heurística da recuperação do .ass: a linha inteira (todos os quadros) e o motivo de cada tag
+      tagCell.append(el('span', 'tags-label', t('dbgAssRecovered')), ' ',
+        el('code', null, `${formatTime(recovered.start)} → ${formatTime(recovered.end)} ${recovered.style}: ${recovered.assText}`));
+      for (const tag of recovered.tags) tagCell.append(el('div', 'hint', `${tag.text}: ${tag.reason}`));
+    } else {
+      tagCell.append(el('span', 'tags-label', t('dbgAssGuess')), ' ', el('code', null, guessAssTags(lines, group, track?.info)));
+    }
     tagRow.append(tagCell);
     tbody.append(tagRow);
     return tbody;

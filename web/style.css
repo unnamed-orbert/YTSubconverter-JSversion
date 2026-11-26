@@ -80,3 +80,33 @@ button:hover { border-color: var(--accent); }
   .controls .seek { order: -1; flex-basis: 100%; }
   .controls .time { margin-right: auto; }
 }
+
+/* Tabela de debug do preview */
+.debug-toggle { display: inline-flex; gap: 6px; align-items: center; margin-top: 12px; cursor: pointer; font-size: .9rem; }
+/* A tabela é larga: ocupa mais que a coluna da página quando a janela deixa. */
+.debug { margin-top: 10px; width: min(1240px, 100vw - 32px); margin-left: calc(50% - min(620px, 50vw - 16px)); }
+.debug-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.debug-summary { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .875rem; }
+.debug-copy { padding: 4px 10px; font-size: .85rem; }
+.debug-note { color: var(--muted); font-size: .78rem; margin: 6px 0; }
+.debug-scroll { overflow: auto; max-height: 60vh; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.debug-table { border-collapse: collapse; font-size: .75rem; line-height: 1.35; min-width: 100%; }
+.debug-table th { position: sticky; top: 0; z-index: 1; background: var(--card); text-align: left; font-weight: 600;
+  padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.debug-table td { padding: 4px 8px; border-top: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
+.debug-table tbody.debug-group:hover td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.debug-table .mono, .debug-table code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.debug-table .text .sample { white-space: pre; background: color-mix(in srgb, var(--fg) 8%, transparent); border-radius: 3px; padding: 0 3px; }
+.debug-table .not-yet .sample { opacity: .45; text-decoration: line-through dotted; }
+.debug-table .hint { color: var(--muted); }
+.debug-table .effects { white-space: normal; min-width: 220px; }
+.debug-table tr.tags td { border-top: none; padding-top: 0; padding-bottom: 8px; white-space: normal; }
+.debug-table tr.tags code { word-break: break-all; font-size: .72rem; color: var(--muted); }
+.debug-table .tags-label { font-weight: 600; }
+.debug-table .debug-empty { color: var(--muted); padding: 12px; white-space: normal; }
+.swatch { display: inline-block; width: .9em; height: .9em; margin-right: 4px; vertical-align: -0.1em; border-radius: 2px;
+  border: 1px solid var(--line); background-clip: padding-box;
+  background-image: linear-gradient(45deg, #bbb 25%, transparent 25%, transparent 75%, #bbb 75%); }
+/* Linha apontada na tabela: as outras ficam apagadas e ela ganha um contorno. */
+.cues.has-hl .cue { opacity: .25; }
+.cues.has-hl .cue.debug-hl { opacity: 1; outline: 2px dashed #ffd400; outline-offset: 2px; }

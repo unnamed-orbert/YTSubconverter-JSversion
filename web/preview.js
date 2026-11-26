@@ -4,6 +4,7 @@
 // final depende do player do YouTube.
 
 import { setText } from './i18n.js';
+import { DebugPanel } from './debugPanel.js';
 import { AnchorPoint, HorizontalTextDirection, OffsetType, RubyPart, ShadowType, VerticalTextType } from '../src/enums.js';
 
 // Coordenadas dos .ytt lidos pelo port estão nesta resolução de referência.
@@ -85,9 +86,10 @@ function makeSpan(section, visible, withBackground = true) {
   return span;
 }
 
-function renderLine(line, time) {
+function renderLine(line, time, index) {
   const box = document.createElement('div');
   box.className = 'cue';
+  box.dataset.line = String(index);
   const [ax, ay] = ANCHOR[line.anchorPoint] ?? ANCHOR[AnchorPoint.BottomCenter];
   const pos = line.position ?? { x: REF_WIDTH * (0.02 + 0.0096 * ax), y: REF_HEIGHT * (0.02 + 0.0096 * ay) };
   box.style.left = `${(pos.x / REF_WIDTH) * 100}%`;
@@ -164,6 +166,11 @@ export class YttPreview {
     this.time = 0;
     this.playing = false;
     this.lastKey = null;
+    this.active = [];
+    /** @type {Set<number> | null} linhas destacadas pela tabela de debug */
+    this.highlight = null;
+    const debugRoot = root.querySelector('.debug');
+    this.debug = debugRoot ? new DebugPanel(debugRoot, root.querySelector('.debug-check'), this) : null;
 
     new ResizeObserver(() => {
       this.stage.style.fontSize = `${(this.stage.clientHeight / REF_HEIGHT) * BASE_FONT_PX}px`;
@@ -258,6 +265,7 @@ export class YttPreview {
       setText(this.downloadLink, 'downloadFile', { name: download.name });
     }
     this.lastKey = null;
+    this.debug?.reset();
     this.root.hidden = false;
     this.updateDuration();
     // Começa logo antes da primeira legenda
@@ -328,16 +336,39 @@ export class YttPreview {
     this.timeLabel.textContent = `${formatTime(t)} / ${formatTime(this.duration)}`;
 
     const active = [];
+    const keys = [];
     for (let i = 0; i < this.lines.length; i++) {
       const line = this.lines[i];
       if (t >= line.start && t < line.end) {
         const shown = line.sections.filter((s) => t >= line.start + s.startOffset).length;
-        active.push(`${i}:${shown}`);
+        active.push(i);
+        keys.push(`${i}:${shown}`);
       }
     }
-    const key = active.join(',');
+    const key = keys.join(',');
     if (key === this.lastKey) return;
     this.lastKey = key;
-    this.layer.replaceChildren(...active.map((a) => renderLine(this.lines[Number(a.split(':')[0])], t)));
+    this.active = active;
+    this.layer.replaceChildren(...active.map((i) => renderLine(this.lines[i], t, i)));
+    this.applyHighlight();
+    this.debug?.schedule();
+  }
+
+  /** Índices (em this.lines) das linhas na tela agora. */
+  activeLines() {
+    return this.active;
+  }
+
+  /** Destaca na tela as linhas que o mouse está apontando na tabela de debug. */
+  setHighlight(indices) {
+    this.highlight = indices ? new Set(indices) : null;
+    this.applyHighlight();
+  }
+
+  applyHighlight() {
+    for (const cue of this.layer.children) {
+      cue.classList.toggle('debug-hl', Boolean(this.highlight?.has(Number(cue.dataset.line))));
+    }
+    this.layer.classList.toggle('has-hl', Boolean(this.highlight));
   }
 }

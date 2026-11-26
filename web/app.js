@@ -24,6 +24,7 @@ const input = document.getElementById('file');
 const format = document.getElementById('format');
 const fadeShadows = document.getElementById('fadeShadows');
 const fadeCutoff = document.getElementById('fadeCutoff');
+const tagHierarchy = document.getElementById('tagHierarchy');
 const captureRadius = document.getElementById('captureRadius');
 const fixDuplication = document.getElementById('fixDuplication');
 const results = document.getElementById('results');
@@ -45,7 +46,11 @@ function baseName(name) {
  */
 async function convertFile(file, targetExt) {
   const cutoff = Number(fadeCutoff.value);
-  const options = { fadeShadowCutoff: fadeShadows.checked && cutoff > 0 ? Math.min(cutoff, 100) : null };
+  const options = {
+    // Com a hierarquia, a porcentagem é sempre o ponto em que o contorno sai e o texto some sozinho.
+    fadeShadowCutoff: (fadeShadows.checked || tagHierarchy.checked) && cutoff > 0 ? Math.min(cutoff, 100) : null,
+    tagHierarchy: tagHierarchy.checked,
+  };
   // Corrigir duplicação massiva: só no caminho .ytt/.json3 -> .srt (para .ytt/.ass a legenda fica como está).
   const dedup = targetExt === '.srt' && fixDuplication.checked;
   const content = new Uint8Array(await file.arrayBuffer());
@@ -77,7 +82,7 @@ async function convertFile(file, targetExt) {
 
 /** Lê o arquivo e, se pedido e a entrada for .ytt/.json3, junta as cópias quadro a quadro. */
 async function load(fileName, content, dedup, plainText) {
-  const doc = await loadDocument(fileName, content);
+  const doc = await loadDocument(fileName, content, { tagHierarchy: tagHierarchy.checked });
   if (dedup && canFixMassiveDuplication(doc)) fixMassiveDuplication(doc, { plainText });
   return doc;
 }

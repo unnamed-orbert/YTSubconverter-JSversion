@@ -31,6 +31,8 @@ const STRINGS = {
       'O YouTube não deixa a sombra/contorno ficar transparente (só a cor #222222), então no fade o texto some e o contorno fica, deixando um rastro. ' +
       'Com isto ligado, quando a opacidade do texto fica abaixo da porcentagem a sombra/contorno é removida e o texto some sozinho. ' +
       'Desligado, o resultado é igual ao YTSubConverter original.',
+    hierarchyLabel: 'Hierarquia de tags (fade + karaokê + chroma, contorno vai para a cor do texto no fade)',
+    hierarchyTitle: 'O .ytt não tem opacidade de sombra/contorno, então no YTSubConverter original o fade e o karaokê \\ytkt(Fade) deixam o contorno opaco enquanto o texto some ou aparece. Com isto ligado, as tags compõem (o fade vale para o texto e para as sombras, o karaokê continua sob o fade e o chroma): no fade a cor do contorno vai até a cor do texto e, abaixo da porcentagem ao lado (40%), o contorno sai e o texto some sozinho, como no libass. Desligado, o resultado é igual ao original.',
     fadeBefore: 'No fade, tirar sombra/contorno abaixo de',
     fadeAfter: '% de opacidade',
     captureLabel: 'Raio de captura do \\ytchroma (recuperar tags)',
@@ -164,6 +166,8 @@ const STRINGS = {
       "YouTube doesn't let shadows/outlines be transparent (except the color #222222), so during a fade the text disappears but the outline stays, leaving a trail. " +
       'With this on, once the text opacity drops below the percentage, the shadow/outline is removed and the text fades out on its own. ' +
       'With it off, the result is the same as the original YTSubConverter.',
+    hierarchyLabel: 'Tag hierarchy (fade + karaoke + chroma, outline turns into the text color while fading)',
+    hierarchyTitle: 'The .ytt format has no shadow/outline opacity, so in the original YTSubConverter fades and \\ytkt(Fade) karaoke leave the outline opaque while the text fades. When on, the tags compose (the fade applies to the text and its shadows, karaoke keeps going under fades and chroma): during a fade the outline color moves to the text color and, below the percentage next to it (40%), the outline is removed and the text fades alone, like in libass. When off, the result is the same as the original.',
     fadeBefore: 'During fades, remove shadow/outline below',
     fadeAfter: '% opacity',
     captureLabel: '\\ytchroma capture radius (recover tags)',
@@ -297,6 +301,8 @@ const STRINGS = {
       'YouTube no permite que la sombra/contorno sea transparente (salvo el color #222222), así que en un fundido el texto desaparece pero el contorno se queda, dejando un rastro. ' +
       'Con esto activado, cuando la opacidad del texto baja del porcentaje, se quita la sombra/contorno y el texto se desvanece solo. ' +
       'Desactivado, el resultado es igual al YTSubConverter original.',
+    hierarchyLabel: 'Jerarquía de etiquetas (fundido + karaoke + chroma, el contorno toma el color del texto en el fundido)',
+    hierarchyTitle: 'El .ytt no tiene opacidad de sombra/contorno, así que en el YTSubConverter original el fundido y el karaoke \\ytkt(Fade) dejan el contorno opaco mientras el texto desaparece. Activado, las etiquetas se combinan (el fundido vale para el texto y sus sombras, el karaoke sigue bajo el fundido y el chroma): en el fundido el color del contorno va hacia el color del texto y, por debajo del porcentaje de al lado (40%), el contorno se quita y el texto desaparece solo, como en libass. Desactivado, el resultado es igual al original.',
     fadeBefore: 'En los fundidos, quitar sombra/contorno por debajo del',
     fadeAfter: '% de opacidad',
     captureLabel: 'Radio de captura del \\ytchroma (recuperar etiquetas)',
@@ -430,6 +436,8 @@ const STRINGS = {
       "YouTube ne permet pas de rendre l'ombre/le contour transparent (sauf la couleur #222222) : pendant un fondu, le texte disparaît mais le contour reste et laisse une trace. " +
       "Avec cette option, quand l'opacité du texte passe sous le pourcentage, l'ombre/le contour est retiré et le texte s'efface seul. " +
       "Désactivée, le résultat est identique à celui du YTSubConverter d'origine.",
+    hierarchyLabel: 'Hiérarchie des balises (fondu + karaoké + chroma, le contour prend la couleur du texte pendant le fondu)',
+    hierarchyTitle: "Le .ytt n'a pas d'opacité d'ombre/contour : dans le YTSubConverter original, les fondus et le karaoké \\ytkt(Fade) laissent le contour opaque pendant que le texte disparaît. Activé, les balises se combinent (le fondu s'applique au texte et à ses ombres, le karaoké continue sous le fondu et le chroma) : pendant le fondu la couleur du contour va vers celle du texte et, sous le pourcentage indiqué (40 %), le contour est retiré et le texte disparaît seul, comme avec libass. Désactivé, le résultat est identique à l'original.",
     fadeBefore: "Pendant les fondus, retirer l'ombre/le contour sous",
     fadeAfter: "% d'opacité",
     captureLabel: 'Rayon de capture du \\ytchroma (récupérer les balises)',

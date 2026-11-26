@@ -13,6 +13,9 @@ const ZERO_WIDTH_SPACE = '​';
 // Surrounded with zwsp's so it can be recognized and removed during reverse conversion
 const PADDING_SPACE = '​ ​';
 
+/** Corte padrão da hierarquia de tags: abaixo de 40% de opacidade do texto a sombra sai. */
+const DEFAULT_HIERARCHY_CUTOFF = 40;
+
 const REFERENCE_VIDEO_DIMENSIONS = { width: 1280, height: 720 };
 
 export class YttDocument extends SubtitleDocument {
@@ -22,10 +25,17 @@ export class YttDocument extends SubtitleDocument {
    *   O YouTube desenha opaca toda sombra/contorno com "ec" (só #222222 acompanha a opacidade do texto), então num
    *   fade o texto some e o contorno fica, deixando um rastro. Com a opção (porcentagem, ex.: 45), quando a opacidade
    *   do texto fica abaixo dela a sombra/contorno é removida e sobra só o texto, que some pela opacidade ("true fade").
+   *   tagHierarchy: extensão do port (ver docs/hierarquia-de-tags.md). Em vez de deixar opaca toda sombra que deveria
+   *   estar transparente (fade, \\t de alpha, karaokê \\ytkt(Fade)), a cor do "ec" vai até a cor do texto e, abaixo
+   *   do corte (fadeShadowCutoff ou 40%), a sombra sai (ver letShadowsFollowText e shadowFade). E as cópias que o
+   *   .ytt cria para cada tipo de sombra deixam de somar a opacidade do texto (cada uma fica com a fração certa).
    */
-  constructor(doc, { fadeShadowCutoff = null } = {}) {
+  constructor(doc, { fadeShadowCutoff = null, tagHierarchy = false, shadowFade = 'cor' } = {}) {
     super(doc);
     this.fadeShadowCutoff = fadeShadowCutoff;
+    this.tagHierarchy = tagHierarchy;
+    /** Com tagHierarchy: 'cor' (sombra vai para a cor do texto) ou 'cinza' (sombra automática #222222). */
+    this.shadowFade = shadowFade;
   }
 
   /**
@@ -229,11 +239,47 @@ export class YttDocument extends SubtitleDocument {
         if (color.a === 0) section.shadowColors.delete(type);
       }
 
+      if (this.tagHierarchy) this.letShadowsFollowText(section);
+
       const toChange = [];
       for (const [type, color] of section.shadowColors) {
         if (color.a !== 254 && ((color.toArgb() & 0xffffff) !== 0x222222 || color.a !== section.foreColor.a)) toChange.push(type);
       }
       for (const type of toChange) section.shadowColors.set(type, changeAlpha(section.shadowColors.get(type), 254));
+    }
+  }
+
+  /**
+   * Hierarquia de tags: o .ytt não tem opacidade de sombra. Com "ec" a sombra é opaca, mas a cor dela pode mudar a cada
+   * quadro; sem "ec" ela é #222222 com a opacidade do texto (fo). Uma sombra que deveria estar transparente (fade,
+   * karaokê \\ytkt(Fade), \\t de alpha: a opacidade dela está mais perto da do texto do que da opaca) é tratada assim:
+   * - 'cor' (padrão): o "ec" vai da cor da sombra até a cor do texto (a cor em destaque) enquanto o texto cai até o
+   *   corte (40%); abaixo do corte a sombra sai e o texto some sozinho pela opacidade, como o fade do libass.
+   * - 'cinza': a sombra vira a automática (#222222 acompanhando o fo); as coloridas só abaixo do corte.
+   */
+  letShadowsFollowText(section) {
+    const textAlpha = section.foreColor.a;
+    const cutoff = ((this.fadeShadowCutoff ?? DEFAULT_HIERARCHY_CUTOFF) / 100) * 255;
+    for (const [type, color] of [...section.shadowColors]) {
+      if (color.a >= 254) continue;
+      if (Math.abs(color.a - textAlpha) >= Math.abs(color.a - 254)) continue;
+
+      if (this.shadowFade === 'cor') {
+        if (textAlpha < cutoff || section.foreColor.isEmpty) {
+          section.shadowColors.delete(type);
+          continue;
+        }
+        // r = 1 na sombra opaca, 0 no corte: a sombra chega à cor do texto exatamente no corte
+        const r = Math.max(0, Math.min(1, (color.a - cutoff) / (254 - cutoff)));
+        const mix = (from, to) => Math.round(to + (from - to) * r);
+        const text = section.foreColor;
+        section.shadowColors.set(type, Color.fromArgb(254, mix(color.r, text.r), mix(color.g, text.g), mix(color.b, text.b)));
+        continue;
+      }
+
+      if (!isNearAutoEdgeColor(color) && color.a >= cutoff) continue;
+      if (textAlpha === 0) section.shadowColors.delete(type);
+      else section.shadowColors.set(type, Color.fromArgb(textAlpha, 0x22, 0x22, 0x22));
     }
   }
 
@@ -250,6 +296,7 @@ export class YttDocument extends SubtitleDocument {
     for (let layerIdx = 0; layerIdx < maxNumShadows; layerIdx++) {
       const shadowLine = line.clone();
       shadowLine.sections.forEach((section, sectionIdx) => {
+        if (this.tagHierarchy) splitTextOpacity(section, maxNumShadows);
         const types = layerTypes[sectionIdx];
         if (layerIdx > 0) section.backColor = Color.Empty;
         if (layerIdx < types.length) {
@@ -632,6 +679,26 @@ function writeWindowStyle(w, id, style) {
   w.attr('sd', sd);
   w.attr('wfo', '0');
   w.end();
+}
+
+/** Uma sombra preta/cinza-escura: trocar pela automática (#222222) não muda a cor de forma visível. */
+function isNearAutoEdgeColor(color) {
+  return color.r <= 0x44 && color.g <= 0x44 && color.b <= 0x44;
+}
+
+/**
+ * Hierarquia de tags: as N cópias de uma linha com N tipos de sombra desenham o texto N vezes, então um texto com
+ * opacidade a aparece com 1 - (1 - a)^N. Cada cópia fica com a fração que, somada, dá a opacidade pedida. A sombra
+ * automática (#222222 sem "ec") acompanha o fo, então ela recebe a mesma fração.
+ */
+function splitTextOpacity(section, numLayers) {
+  const alpha = section.foreColor.a;
+  if (alpha === 0 || alpha >= 254) return;
+  const layerAlpha = Math.max(1, Math.round(255 * (1 - Math.pow(1 - alpha / 255, 1 / numLayers))));
+  for (const [type, color] of [...section.shadowColors]) {
+    if ((color.toArgb() & 0xffffff) === 0x222222 && color.a === alpha) section.shadowColors.set(type, changeAlpha(color, layerAlpha));
+  }
+  section.foreColor = changeAlpha(section.foreColor, layerAlpha);
 }
 
 function writePen(w, id, format) {

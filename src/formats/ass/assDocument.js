@@ -44,9 +44,12 @@ export class AssDocument extends SubtitleDocument {
   /**
    * @param {string | Uint8Array | ArrayBuffer} content contents of the .ass file
    * @param {import('./assModel.js').AssStyleOptions[] | null} [styleOptions]
+   * @param {{tagHierarchy?: boolean}} [options] tagHierarchy: extensão do port (ver docs/hierarquia-de-tags.md):
+   *   as transições de opacidade do karaokê (\\ytkt(Fade)) também valem para a sombra/contorno/caixa da sílaba.
    */
-  constructor(content, styleOptions = null) {
+  constructor(content, styleOptions = null, { tagHierarchy = false } = {}) {
     super();
+    this.tagHierarchy = tagHierarchy;
     this._tagHandlers = createTagHandlers();
     /** @type {Map<string, AssStyle>} */
     this._styles = new Map();
@@ -59,8 +62,8 @@ export class AssDocument extends SubtitleDocument {
   }
 
   /** Parses the text of an .ass file. */
-  static parse(text, styleOptions = null) {
-    return new AssDocument(text, styleOptions);
+  static parse(text, styleOptions = null, options = {}) {
+    return new AssDocument(text, styleOptions, options);
   }
 
   /**

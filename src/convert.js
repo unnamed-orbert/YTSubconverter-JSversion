@@ -33,7 +33,7 @@ export function getInputFormat(fileName, content) {
  * extension is only used when the content isn't recognized.
  * @param {string} fileName
  * @param {string | Uint8Array} content
- * @param {object} [options] passed to the format loader (e.g. styleOptions for .ass)
+ * @param {object} [options] passed to the format loader (e.g. styleOptions and tagHierarchy for .ass)
  */
 export async function loadDocument(fileName, content, options = {}) {
   const format = getInputFormat(fileName, content);
@@ -61,7 +61,7 @@ export function isExtensionSupported(ext) {
 
 /**
  * Converts a document to the format of the given extension.
- * @param {object} [options] for .ytt/.srv3: {fadeShadowCutoff} (see YttDocument)
+ * @param {object} [options] for .ytt/.srv3: {fadeShadowCutoff, tagHierarchy} (see YttDocument)
  */
 export function convertDocument(doc, newExtension, options = {}) {
   switch (newExtension?.toLowerCase()) {

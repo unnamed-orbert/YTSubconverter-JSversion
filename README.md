@@ -16,7 +16,7 @@ node bin/ytsubconverter.js legenda.ass saida.ytt
 node bin/ytsubconverter.js legenda.ytt          # gera legenda.srt
 node bin/ytsubconverter.js legenda.srt saida.ass   # .ass com os estilos YT* padrão
 node bin/ytsubconverter.js legenda.json3 saida.ass # json3 do YouTube para .ass (ou saida.ytt)
-node bin/ytsubconverter.js legenda.ytt saida.srt --corrigir-duplicacao  # uma linha por frase (ver abaixo)
+node bin/ytsubconverter.js legenda.json3 saida.srt # .srt limpo, uma linha por frase (ver abaixo)
 ```
 
 O formato de entrada é reconhecido **pelo conteúdo** (`src/detect.js`), não pela extensão: um json3
@@ -70,14 +70,16 @@ YTSubConverter (espaços de preenchimento, cópia para texto escuro etc.). Arqui
 
 ### Corrigir duplicação massiva
 
-Um .ytt/.json3 feito a partir de um .ass com animação (`\fade`, `\move`, `\t`, karaokê, várias sombras)
-repete a mesma frase em centenas de linhas, uma por quadro. Com a opção "Corrigir duplicação massiva"
-(página) ou `--corrigir-duplicacao` (CLI), `src/dedup.js` junta essas cópias em uma linha por frase:
-agrupa por posição na tela (grade de 20%), junta quadros com o mesmo texto (ou texto que cresce) separados
-por menos de 200 ms, descarta frases com menos de 300 ms, na sobreposição fica a mais de baixo e fecha
-buracos de até 500 ms. É o port da ferramenta "YTT → SRT" do Carlos. A única diferença: lá uma janela
-encostada à esquerda (`ah="0"`) era tratada como centro; aqui ela fica à esquerda. A opção só vale para
-entrada .ytt/.srv3/.json3; nas outras não faz nada.
+Um .json3/.ytt cheio de estilos e animação (`\fade`, `\move`, `\t`, karaokê, várias sombras) repete a
+mesma frase em centenas de linhas, uma por quadro. Ao converter .json3/.ytt para **.srt**, `src/dedup.js`
+junta essas cópias em uma linha por frase, como a ferramenta "YTT → SRT" do Carlos (é o port dela, e o .srt
+sai igual ao dela): agrupa por posição na tela (grade de 20%), junta quadros com o mesmo texto (ou texto que
+cresce) separados por menos de 200 ms, descarta frases com menos de 300 ms, na sobreposição fica a mais de
+baixo e fecha buracos de até 500 ms.
+
+Isso é automático para a saída .srt (na página, a caixa "Corrigir duplicação massiva" já vem marcada). Para
+desligar: desmarque a caixa, ou `--manter-duplicacao` na CLI. Para saída .ytt/.ass a legenda não é mexida,
+a não ser com `--corrigir-duplicacao` na CLI.
 
 ## Testes
 

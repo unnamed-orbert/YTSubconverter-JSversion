@@ -10,12 +10,15 @@ const args = process.argv.slice(2);
 // --fade-sombras[=45]: no fade, tira sombra/contorno quando a opacidade do texto fica abaixo de 45% (ver YttDocument)
 const fadeArg = args.find((a) => a === '--fade-sombras' || a.startsWith('--fade-sombras='));
 const fadeShadowCutoff = fadeArg ? Number(fadeArg.split('=')[1] ?? 45) : null;
-// --corrigir-duplicacao: entrada .ytt/.json3 com a mesma frase repetida quadro a quadro vira uma linha por frase
+// Corrigir duplicação massiva (src/dedup.js): de .ytt/.json3 para .srt é automático, como na ferramenta YTT → SRT.
+// --manter-duplicacao desliga; --corrigir-duplicacao aplica também na saída .ytt/.ass.
 const DEDUP_FLAG = '--corrigir-duplicacao';
-const fixDuplication = args.includes(DEDUP_FLAG);
-const [input, outputArg] = args.filter((a) => a !== fadeArg && a !== DEDUP_FLAG);
+const KEEP_DUP_FLAG = '--manter-duplicacao';
+const forceDedup = args.includes(DEDUP_FLAG);
+const keepDuplication = args.includes(KEEP_DUP_FLAG);
+const [input, outputArg] = args.filter((a) => a !== fadeArg && a !== DEDUP_FLAG && a !== KEEP_DUP_FLAG);
 if (!input || input === '-h' || input === '--help') {
-  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras[=45]] [--corrigir-duplicacao]');
+  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras[=45]] [--manter-duplicacao | --corrigir-duplicacao]');
   process.exit(input ? 0 : 1);
 }
 
@@ -36,8 +39,10 @@ const output = outputArg ?? (base + defaultExt === input ? `${base}.convertido${
 
 try {
   const doc = await loadDocument(input, content);
-  if (fixDuplication && canFixMassiveDuplication(doc)) fixMassiveDuplication(doc);
-  const result = convertDocument(doc, extname(output), { fadeShadowCutoff });
+  const outputExt = extname(output).toLowerCase();
+  const toSrt = outputExt === '.srt';
+  if ((forceDedup || (toSrt && !keepDuplication)) && canFixMassiveDuplication(doc)) fixMassiveDuplication(doc, { plainText: toSrt });
+  const result = convertDocument(doc, outputExt, { fadeShadowCutoff });
   writeFileSync(output, result.save({ bom: true }), 'utf8');
   console.log(`${input} -> ${output}`);
 } catch (err) {

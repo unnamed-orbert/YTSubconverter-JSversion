@@ -7,9 +7,10 @@
 // A lógica abaixo agrupa os quadros pela posição na tela (grade de 20%), junta os que continuam a mesma frase,
 // resolve frases que se sobrepõem (fica a mais de baixo) e acerta os tempos entre uma frase e a próxima.
 //
-// A diferença para a ferramenta original é que aqui ela roda sobre as linhas já lidas (Line), e não sobre o
-// JSON cru: assim vale igual para .ytt e .json3, e as linhas que sobram mantêm a formatação (cor, fonte,
-// posição) de um dos quadros, para quem converte para .ytt/.ass em vez de .srt.
+// Aqui ela roda sobre as linhas já lidas (Line), e não sobre o JSON cru: assim vale igual para .ytt e .json3.
+// Com {plainText: true} (o caminho para .srt) cada linha sai com o texto exatamente como a ferramenta gera:
+// numa linha só, sem espaços sobrando. Sem isso as linhas mantêm a formatação (cor, fonte, posição) de um dos
+// quadros, para quem pede a correção também na saída .ytt/.ass.
 
 import { YttDocument } from './formats/ytt.js';
 
@@ -31,8 +32,9 @@ export function canFixMassiveDuplication(doc) {
 /**
  * Junta as cópias quadro a quadro das linhas do documento (altera e devolve o próprio documento).
  * @param {import('./formats/subtitleDocument.js').SubtitleDocument} doc
+ * @param {{plainText?: boolean}} [options] plainText: cada linha vira só o texto, numa linha (para .srt)
  */
-export function fixMassiveDuplication(doc) {
+export function fixMassiveDuplication(doc, { plainText = false } = {}) {
   const { width, height } = doc.videoDimensions ?? { width: 1280, height: 720 };
 
   // PASSO 1: extrai as frases, com a posição encaixada na grade
@@ -41,10 +43,10 @@ export function fixMassiveDuplication(doc) {
     const text = normalizeText(line.text);
     if (!text) continue;
 
-    // Igual à ferramenta: sem posição conta como topo (0) e centro (50). Diferença: a ferramenta lia ah="0"
-    // (encostado à esquerda) como centro, por causa do "|| 50"; aqui a esquerda continua esquerda.
+    // Igual à ferramenta: sem posição conta como topo (0) e centro (50), e ah="0" também conta como centro
+    // (o "ahHorPos || 50" dela). Mantido de propósito para o .srt sair idêntico ao da ferramenta.
     const vPos = line.position ? toYouTubeCoord(line.position.y, height) : 0;
-    const hPos = line.position ? toYouTubeCoord(line.position.x, width) : 50;
+    const hPos = (line.position ? toYouTubeCoord(line.position.x, width) : 0) || 50;
     const duration = line.end - line.start;
     subs.push({
       start: line.start,
@@ -144,7 +146,12 @@ export function fixMassiveDuplication(doc) {
     line.end = r.end;
     // Os tempos de karaokê eram relativos ao quadro; a linha agora começa em outro ponto.
     for (const s of line.sections) s.startOffset = 0;
-    trimLine(line);
+    if (plainText) {
+      line.sections = [line.sections[0]];
+      line.sections[0].text = r.text;
+    } else {
+      trimLine(line);
+    }
     return line;
   });
   return doc;

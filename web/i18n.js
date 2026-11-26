@@ -18,6 +18,9 @@ const STRINGS = {
       'ou solte um <b>.ytt</b> para ver como ele fica. O formato é reconhecido pelo conteúdo, então o arquivo pode vir sem extensão ou com a extensão errada. ' +
       'Tudo acontece no seu navegador: o arquivo não é enviado para lugar nenhum.',
     language: 'Idioma',
+    docsLink: 'Documentação',
+    docsTitle: 'Documentação · Conversor de legendas',
+    docsBack: '← Voltar ao conversor',
     dropBig: 'Solte os arquivos aqui',
     dropSmall: 'ou clique para escolher',
     convertTo: 'Converter para',
@@ -148,6 +151,9 @@ const STRINGS = {
       'or drop a <b>.ytt</b> to see how it looks. The format is detected from the content, so the file can have no extension or the wrong one. ' +
       'Everything happens in your browser: the file is never uploaded anywhere.',
     language: 'Language',
+    docsLink: 'Documentation',
+    docsTitle: 'Documentation · Subtitle converter',
+    docsBack: '← Back to the converter',
     dropBig: 'Drop files here',
     dropSmall: 'or click to choose',
     convertTo: 'Convert to',
@@ -278,6 +284,9 @@ const STRINGS = {
       'o suelta un <b>.ytt</b> para ver cómo queda. El formato se reconoce por el contenido, así que el archivo puede venir sin extensión o con la extensión equivocada. ' +
       'Todo ocurre en tu navegador: el archivo no se envía a ningún sitio.',
     language: 'Idioma',
+    docsLink: 'Documentación',
+    docsTitle: 'Documentación · Conversor de subtítulos',
+    docsBack: '← Volver al conversor',
     dropBig: 'Suelta los archivos aquí',
     dropSmall: 'o haz clic para elegir',
     convertTo: 'Convertir a',
@@ -408,6 +417,9 @@ const STRINGS = {
       "ou déposez un <b>.ytt</b> pour voir son rendu. Le format est reconnu d'après le contenu : le fichier peut être sans extension ou avec une mauvaise extension. " +
       "Tout se passe dans votre navigateur : le fichier n'est envoyé nulle part.",
     language: 'Langue',
+    docsLink: 'Documentation',
+    docsTitle: 'Documentation · Convertisseur de sous-titres',
+    docsBack: '← Retour au convertisseur',
     dropBig: 'Déposez les fichiers ici',
     dropSmall: 'ou cliquez pour choisir',
     convertTo: 'Convertir en',

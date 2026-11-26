@@ -12,6 +12,9 @@ body { margin: 0; background: var(--bg); color: var(--fg);
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 main { max-width: 680px; margin: 0 auto; padding: 32px 16px; }
 h1 { font-size: 1.6rem; margin: 0 0 8px; }
+.topbar { display: flex; justify-content: flex-end; margin: -16px 0 8px; }
+.topbar .lang { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .9rem; }
+.topbar .lang select { margin-left: 0; }
 .sub { color: var(--muted); margin: 0 0 24px; }
 .drop { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 48px 16px;
   border: 2px dashed var(--line); border-radius: 12px; background: var(--card); cursor: pointer;

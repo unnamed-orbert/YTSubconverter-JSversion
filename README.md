@@ -49,6 +49,9 @@ Como usa módulos JavaScript, a página precisa ser aberta por HTTP, não com du
   A página fica em `https://<usuário>.github.io/<repositório>/`.
 - **Localmente:** `npx serve .` (ou `python3 -m http.server`) na pasta do projeto e abra o endereço mostrado.
 
+A página está em português, inglês, espanhol e francês (`web/i18n.js`). O idioma inicial é o do
+navegador (outros idiomas caem em inglês), pode ser trocado no seletor do topo e fica salvo no navegador.
+
 ## Estado
 
 | Formato | Leitura | Escrita |

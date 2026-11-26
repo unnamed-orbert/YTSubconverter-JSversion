@@ -3,35 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Conversor de legendas</title>
+<title data-i18n="pageTitle">Conversor de legendas</title>
 <link rel="stylesheet" href="web/style.css">
 </head>
 <body>
 <main>
-  <h1>Conversor de legendas para o YouTube</h1>
-  <p class="sub">Arraste uma legenda <b>.srt</b>, <b>.sbv</b>, <b>.ass</b> ou <b>.json3</b> (o formato que o YouTube serve) e baixe o <b>.ytt</b> pronto para enviar ao YouTube,
+  <div class="topbar">
+    <label class="lang"><span data-i18n="language">Idioma</span>
+      <select id="lang"></select>
+    </label>
+  </div>
+  <h1 data-i18n="heading">Conversor de legendas para o YouTube</h1>
+  <p class="sub" data-i18n-html="intro">Arraste uma legenda <b>.srt</b>, <b>.sbv</b>, <b>.ass</b> ou <b>.json3</b> (o formato que o YouTube serve) e baixe o <b>.ytt</b> pronto para enviar ao YouTube,
     ou solte um <b>.ytt</b> para ver como ele fica. O formato é reconhecido pelo conteúdo, então o arquivo pode vir sem extensão ou com a extensão errada. Tudo acontece no seu navegador: o arquivo não é enviado para lugar nenhum.</p>
 
   <label id="drop" class="drop" tabindex="0">
     <input id="file" type="file" multiple hidden>
-    <span class="big">Solte os arquivos aqui</span>
-    <span>ou clique para escolher</span>
+    <span class="big" data-i18n="dropBig">Solte os arquivos aqui</span>
+    <span data-i18n="dropSmall">ou clique para escolher</span>
   </label>
 
   <div class="options">
-    <label>Converter para
+    <label><span data-i18n="convertTo">Converter para</span>
       <select id="format">
-        <option value=".ytt" selected>.ytt (YouTube, com estilos)</option>
-        <option value=".ass">.ass (Aegisub, com estilos)</option>
-        <option value=".srt">.srt (texto simples)</option>
+        <option value=".ytt" selected data-i18n="optYtt">.ytt (YouTube, com estilos)</option>
+        <option value=".ass" data-i18n="optAss">.ass (Aegisub, com estilos)</option>
+        <option value=".srt" data-i18n="optSrt">.srt (texto simples)</option>
       </select>
     </label>
-    <label class="check" title="O YouTube não deixa a sombra/contorno ficar transparente (só a cor #222222), então no fade o texto some e o contorno fica, deixando um rastro. Com isto ligado, quando a opacidade do texto fica abaixo da porcentagem a sombra/contorno é removida e o texto some sozinho. Desligado, o resultado é igual ao YTSubConverter original.">
-      <input type="checkbox" id="fadeShadows"> No fade, tirar sombra/contorno abaixo de
-      <input type="number" id="fadeCutoff" value="45" min="1" max="100" step="1">% de opacidade
+    <label class="check" data-i18n-title="fadeTitle">
+      <input type="checkbox" id="fadeShadows"> <span data-i18n="fadeBefore">No fade, tirar sombra/contorno abaixo de</span>
+      <input type="number" id="fadeCutoff" value="45" min="1" max="100" step="1"><span data-i18n="fadeAfter">% de opacidade</span>
     </label>
-    <label class="check" title="Ao converter .json3/.ytt para .srt: um .json3/.ytt cheio de estilos e animação (fade, movimento, karaokê, várias sombras) repete a mesma frase em centenas de linhas, uma por quadro. Com isto ligado (o padrão), as repetições viram uma linha por frase, com os tempos acertados, igual à ferramenta YTT → SRT. Para saída .ytt/.ass não muda nada.">
-      <input type="checkbox" id="fixDuplication" checked> Corrigir duplicação massiva (.json3/.ytt para .srt)
+    <label class="check" data-i18n-title="dedupTitle">
+      <input type="checkbox" id="fixDuplication" checked> <span data-i18n="dedupLabel">Corrigir duplicação massiva (.json3/.ytt para .srt)</span>
     </label>
   </div>
 
@@ -39,7 +44,7 @@
 
   <section id="preview" class="preview" hidden tabindex="-1">
     <div class="preview-head">
-      <h2>Preview: <span class="title"></span></h2>
+      <h2><span data-i18n="previewHeading">Preview:</span> <span class="title"></span></h2>
       <a class="btn download" hidden>Baixar</a>
     </div>
     <div class="player">
@@ -48,23 +53,23 @@
         <div class="cues"></div>
       </div>
       <div class="controls">
-        <button type="button" class="play">Tocar</button>
-        <input type="range" class="seek" min="0" max="0" step="10" value="0" aria-label="Posição">
+        <button type="button" class="play" data-i18n="play">Tocar</button>
+        <input type="range" class="seek" min="0" max="0" step="10" value="0" aria-label="Posição" data-i18n-aria-label="position">
         <span class="time">0:00.00</span>
-        <button type="button" class="fs" title="Tela cheia (F)">Tela cheia</button>
+        <button type="button" class="fs" title="Tela cheia (F)" data-i18n="fullscreen" data-i18n-title="fullscreenTitle">Tela cheia</button>
       </div>
     </div>
-    <label class="video-pick">Ver sobre um vídeo do seu computador:
+    <label class="video-pick"><span data-i18n="videoPick">Ver sobre um vídeo do seu computador:</span>
       <input type="file" class="video-input" accept="video/*">
     </label>
-    <p class="note">Aproximação de como o player do YouTube mostra a legenda. Confira no YouTube antes de publicar.</p>
+    <p class="note" data-i18n="previewNote">Aproximação de como o player do YouTube mostra a legenda. Confira no YouTube antes de publicar.</p>
   </section>
 
   <noscript><p class="err">Esta página precisa de JavaScript.</p></noscript>
-  <p id="filewarn" class="err" hidden>Abra esta página por um servidor (por exemplo o GitHub Pages);
+  <p id="filewarn" class="err" hidden data-i18n="fileWarn">Abra esta página por um servidor (por exemplo o GitHub Pages);
     abrindo o arquivo direto do disco o navegador bloqueia os módulos JavaScript.</p>
 
-  <footer>Port em JavaScript do <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a>.</footer>
+  <footer data-i18n-html="footer">Port em JavaScript do <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a>.</footer>
 </main>
 <script>if (location.protocol === 'file:') document.getElementById('filewarn').hidden = false;</script>
 <script type="module" src="web/app.js"></script>

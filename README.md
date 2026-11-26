@@ -32,7 +32,7 @@ e sem enviar o arquivo para lugar nenhum.
 Depois de converter (ou soltando um `.ytt`/`.srv3` direto), a página mostra um **preview**: as legendas
 desenhadas numa área 16:9 com posição, fonte, tamanho, cores, fundo, contorno/sombra, karaokê, ruby e
 texto vertical, com tocar/pausar e linha do tempo. Dá para escolher um vídeo do computador para ver
-a legenda por cima dele. O preview lê o próprio `.ytt` gerado (`web/preview.js`) e é uma aproximação
+a legenda por cima dele, inclusive em tela cheia (botão "Tela cheia", tecla F ou duplo clique). O preview lê o próprio `.ytt` gerado (`web/preview.js`) e é uma aproximação
 do player do YouTube; truques que dependem do jeito exato do YouTube desenhar (por exemplo, várias
 sombras na mesma linha) podem aparecer um pouco diferentes.
 

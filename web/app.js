@@ -135,6 +135,8 @@ async function handleFiles(files) {
       status.className = 'err';
       // Erros da própria página são traduzidos; os da conversão aparecem como vieram.
       setText(status, 'error', { message: err.i18nKey ? { key: err.i18nKey } : err.message });
+      // A recuperação de tags lê o .ytt/.json3 por conta própria: um erro na conversão não pode esconder o botão.
+      if (!li.querySelector('button.recover')) await addRecoverButton(li, file).catch((e) => console.error(e));
     }
   }
 }

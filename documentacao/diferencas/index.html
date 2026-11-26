@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diferenças em relação ao original · Conversor de legendas</title>
+<link rel="stylesheet" href="../../web/style.css">
+<link rel="stylesheet" href="../../documentacao/docs.css">
+</head>
+<body data-title-key="diffTitle">
+<main class="docs">
+  <div class="topbar">
+    <a class="docs-link" href="../../documentacao/" data-i18n="diffBack">← Documentação</a>
+    <a class="docs-link" href="../../" data-i18n="docsBack">← Voltar ao conversor</a>
+    <label class="lang"><span data-i18n="language">Idioma</span>
+      <select id="lang"></select>
+    </label>
+  </div>
+
+  <article data-lang="pt" lang="pt-BR">
+  <h1>Diferenças em relação ao original</h1>
+  <p class="sub">O que muda entre o <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a> original (C#) e esta versão em JavaScript: onde roda, formatos, ferramentas novas, mudanças na conversão e o que ficou de fora.
+    Para usar o conversor, veja a <a href="../../documentacao/">documentação</a>.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#pt-onde">Onde roda</a></li>
+    <li><a href="#pt-formatos">Formatos e arquivos</a></li>
+    <li><a href="#pt-ferramentas">Ferramentas novas</a></li>
+    <li><a href="#pt-hierarquia">Hierarquia de tags</a></li>
+    <li><a href="#pt-correcoes">Correções que sempre valem</a></li>
+    <li><a href="#pt-fora">O que ficou de fora</a></li>
+    <li><a href="#pt-identico">Saída idêntica ao original</a></li>
+  </ol></nav>
+
+  <h2 id="pt-onde">Onde roda</h2>
+  <div class="table"><table>
+    <tr><th></th><th>Original</th><th>Esta versão</th></tr>
+    <tr><td>Programa</td><td>Aplicativo .NET com janela (Windows, Mac, Linux).</td><td>Página no navegador, sem instalar nada, e linha de comando no Node.js 18+. Sem dependências.</td></tr>
+    <tr><td>Arquivos</td><td>Lidos do disco.</td><td>No navegador, o arquivo não sai do computador: a conversão roda na própria página.</td></tr>
+    <tr><td>Idioma</td><td>Inglês.</td><td>Página e documentação em português, inglês, espanhol e francês.</td></tr>
+    <tr><td>Resultado</td><td colspan="2">O mesmo .ytt. O port reproduz os detalhes do .NET (contas em <code>float</code>, arredondamento bancário, <code>DateTime</code>, <code>Random</code> com semente), e os arquivos de teste do original são comparados byte a byte.</td></tr>
+  </table></div>
+
+  <h2 id="pt-formatos">Formatos e arquivos</h2>
+  <div class="table"><table>
+    <tr><th></th><th>Original</th><th>Esta versão</th></tr>
+    <tr><td>Reconhecer o formato</td><td>Pela extensão.</td><td>Pelo conteúdo. Um arquivo sem extensão, ou com a extensão errada (<code>.txt</code>, <code>timedtext</code>), funciona igual.</td></tr>
+    <tr><td>.json3</td><td>Não lê.</td><td>Lê o formato que o player do YouTube baixa e converte para .srt, .ass ou .ytt.</td></tr>
+    <tr><td>Tags no .srt/.sbv</td><td><code>&lt;i&gt; &lt;b&gt; &lt;u&gt; &lt;font color&gt;</code> ficavam como texto.</td><td>Viram itálico, negrito, sublinhado e cor no .ytt e no .ass.</td></tr>
+    <tr><td>Saída .ytt</td><td>Quase tudo numa linha só.</td><td>Com quebras de linha, mais fácil de ler e comparar. O conteúdo é o mesmo.</td></tr>
+    <tr><td>Nome da saída na CLI</td><td>—</td><td>.ytt/.json3 viram .srt e o resto vira .ytt. A entrada nunca é sobrescrita: se os nomes coincidem, a saída fica <code>nome.convertido.ext</code>.</td></tr>
+  </table></div>
+
+  <h2 id="pt-ferramentas">Ferramentas novas</h2>
+  <ul>
+    <li><b>Corrigir duplicação massiva:</b> .json3/.ytt para .srt com uma linha por frase, em vez de uma linha por quadro de animação. É o port da ferramenta "YTT → SRT".</li>
+    <li><b>Recuperar tags originais:</b> heurística que reconstrói o .ass de origem a partir do .ytt/.json3. Recupera <code>\fad</code>, <code>\move</code>, <code>\ytshake</code>, <code>\k</code>, <code>\ytkt</code>, <code>\t</code> e <code>\ytchroma</code>, e os estilos com várias sombras.</li>
+    <li><b>Comparador:</b> refaz o .ytt a partir do .ass recuperado e mostra os dois lado a lado, com a semelhança a cada 100 ms.</li>
+    <li><b>Preview do .ytt:</b> player 16:9 com linha do tempo, vídeo do computador, tela cheia e botão de baixar.</li>
+    <li><b>Tabela de debug:</b> no preview, mostra o que cada linha desenha e as tags .ass prováveis.</li>
+    <li><b>Atualizar arquivos:</b> ao mudar uma opção, os arquivos carregados são convertidos de novo sozinhos.</li>
+    <li><b>True fade:</b> opção que tira a sombra/contorno quando a opacidade do texto fica abaixo de uma porcentagem.</li>
+  </ul>
+
+  <h2 id="pt-hierarquia">Hierarquia de tags</h2>
+  <p>No original, as tags que mexem na opacidade não têm ordem entre si: cada uma escreve a cor/opacidade do trecho e a última ganha. No fim, a escrita do .ytt deixa toda sombra opaca, então no <code>\fad</code>/<code>\fade</code> e no <code>\ytkt(Fade)</code> o texto some (ou aparece) e o contorno fica inteiro, como um rastro.
+    Aqui as tags <b>se compõem</b>. A hierarquia vem ligada (caixa "Hierarquia de tags" na página; na linha de comando, <code>--modo-original</code> desliga).</p>
+  <ul>
+    <li><b>A opacidade multiplica.</b> Uma sílaba entrando no <code>\ytkt(Fade)</code> (30%) no fim de um <code>\fad</code> (50%) fica com 15%.</li>
+    <li><b>Contorno no fade.</b> Enquanto o texto está acima do corte (<b>40%</b> por padrão), a cor do contorno vai da cor dele até a cor do texto, e chega nela exatamente no corte. Abaixo do corte o contorno sai e o texto some sozinho, como no libass. No <code>\ytkt(Fade)</code> é o inverso: a sílaba entra só com o texto e ganha o contorno a partir de 40%.</li>
+    <li><b>Sombras deslocadas no fade.</b> A sombra suave, a dura e o relevo não vão para a cor do texto, porque virariam um borrão claro. As escuras viram a sombra automática do YouTube (#222222 com a opacidade do texto) e somem junto. As coloridas ficam até o corte.</li>
+    <li><b>Várias sombras dividem a opacidade.</b> O .ytt desenha o texto uma vez por tipo de sombra. Cada cópia fica com <code>1 - (1 - a)^(1/N)</code>, para que juntas deem a opacidade <code>a</code> pedida em vez de somar.</li>
+    <li><b>Sombra transparente sem transição</b> (por exemplo, um estilo com sombra <code>&amp;H80000000</code> e texto opaco) continua opaca, como no original.</li>
+  </ul>
+  <p>Os detalhes estão em <a href="https://github.com/unnamed-orbert/YTSubconverter-JSversion/blob/main/docs/hierarquia-de-tags.md">docs/hierarquia-de-tags.md</a>.</p>
+
+  <h2 id="pt-correcoes">Correções que sempre valem</h2>
+  <p>Casos em que o original dava erro, ignorava a tag ou desfazia o efeito. Valem com ou sem a hierarquia.</p>
+  <div class="table"><table>
+    <tr><th>Caso</th><th>Original</th><th>Esta versão</th></tr>
+    <tr><td><code>\ytchroma</code> + <code>\k</code></td><td>O karaokê recomeçava do zero nas cópias de entrada e de saída.</td><td>O karaokê continua de onde estava durante as cópias.</td></tr>
+    <tr><td><code>\ytchroma</code> + karaokê ou <code>\t</code> de cor</td><td>As cópias eram pintadas de volta nas cores da linha, e o efeito sumia (com <code>\ytkt(Fade)</code> + <code>\fad</code>, as cópias pareciam a própria linha).</td><td>As cópias ficam na cor do chroma e só herdam a opacidade e o fade.</td></tr>
+    <tr><td><code>\fade(entrada,saída)</code></td><td>Só aceitava a forma de 7 valores. A de 2 era ignorada e a linha ficava sem fade.</td><td>Funciona como <code>\fad</code>, igual ao libass e ao VSFilter.</td></tr>
+    <tr><td>Salvar .ass com uma combinação de sombras sem estilo</td><td>Erro (<code>NullReferenceException</code>).</td><td>Cria um estilo <code>YT&lt;sombras&gt;[Box]</code> (ex.: <code>YTGlowSoftShadowHardShadowBevel</code>), e o leitor deduz as sombras pelo nome.</td></tr>
+  </table></div>
+
+  <h2 id="pt-fora">O que ficou de fora</h2>
+  <ul>
+    <li><b>.ttml:</b> não lê nem escreve.</li>
+    <li><b>Modo "visual" da saída .ass</b> (<code>VisualizingAssDocument</code>): não portado.</li>
+    <li><b>Janela de opções de estilo:</b> não há. O tipo de sombra vem do nome do estilo (<code>YTGlow</code>, <code>YTSoftShadow</code>…), e um <code>StyleOptions.xml</code> do original continua servindo.</li>
+  </ul>
+
+  <h2 id="pt-identico">Saída idêntica ao original</h2>
+  <p>Para gerar exatamente o mesmo .ytt que o YTSubConverter:</p>
+  <ul>
+    <li>na página, desmarque "Hierarquia de tags" e "No fade, tirar sombra/contorno";</li>
+    <li>na linha de comando, use <code>--modo-original</code> e não use <code>--fade-sombras</code>.</li>
+  </ul>
+  <p>As <a href="#pt-correcoes">correções que sempre valem</a> só mudam os arquivos que caem nesses casos, em que o original dava erro ou perdia o efeito. Na saída .srt de um .ytt/.json3, a correção de duplicação vem ligada (desligue na caixa ou com <code>--manter-duplicacao</code>).</p>
+  </article>
+
+  <article data-lang="en" lang="en" hidden>
+  <h1>Differences from the original</h1>
+  <p class="sub">What changes between the original <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a> (C#) and this JavaScript version: where it runs, formats, new tools, conversion changes and what was left out.
+    To use the converter, see the <a href="../../documentacao/">documentation</a>.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#en-where">Where it runs</a></li>
+    <li><a href="#en-formats">Formats and files</a></li>
+    <li><a href="#en-tools">New tools</a></li>
+    <li><a href="#en-hierarchy">Tag hierarchy</a></li>
+    <li><a href="#en-fixes">Fixes that always apply</a></li>
+    <li><a href="#en-out">What was left out</a></li>
+    <li><a href="#en-identical">Output identical to the original</a></li>
+  </ol></nav>
+
+  <h2 id="en-where">Where it runs</h2>
+  <div class="table"><table>
+    <tr><th></th><th>Original</th><th>This version</th></tr>
+    <tr><td>Program</td><td>.NET desktop app (Windows, Mac, Linux).</td><td>A web page with nothing to install, plus a command line on Node.js 18+. No dependencies.</td></tr>
+    <tr><td>Files</td><td>Read from disk.</td><td>In the browser the file never leaves the computer: the conversion runs on the page itself.</td></tr>
+    <tr><td>Language</td><td>English.</td><td>Page and documentation in Portuguese, English, Spanish and French.</td></tr>
+    <tr><td>Result</td><td colspan="2">The same .ytt. The port reproduces .NET details (<code>float</code> math, banker's rounding, <code>DateTime</code>, seeded <code>Random</code>), and the original's test files are compared byte by byte.</td></tr>
+  </table></div>
+
+  <h2 id="en-formats">Formats and files</h2>
+  <div class="table"><table>
+    <tr><th></th><th>Original</th><th>This version</th></tr>
+    <tr><td>Detecting the format</td><td>By extension.</td><td>By content. A file with no extension, or the wrong one (<code>.txt</code>, <code>timedtext</code>), works the same.</td></tr>
+    <tr><td>.json3</td><td>Not read.</td><td>Reads the format the YouTube player downloads and converts it to .srt, .ass or .ytt.</td></tr>
+    <tr><td>Tags in .srt/.sbv</td><td><code>&lt;i&gt; &lt;b&gt; &lt;u&gt; &lt;font color&gt;</code> stayed as text.</td><td>They become italic, bold, underline and color in the .ytt and .ass.</td></tr>
+    <tr><td>.ytt output</td><td>Almost everything on a single line.</td><td>With line breaks, easier to read and compare. The content is the same.</td></tr>
+    <tr><td>CLI output name</td><td>—</td><td>.ytt/.json3 become .srt and everything else becomes .ytt. The input is never overwritten: if the names collide, the output is <code>name.convertido.ext</code>.</td></tr>
+  </table></div>
+
+  <h2 id="en-tools">New tools</h2>
+  <ul>
+    <li><b>Fix massive duplication:</b> .json3/.ytt to .srt with one line per sentence instead of one line per animation frame. It's a port of the "YTT → SRT" tool.</li>
+    <li><b>Recover original tags:</b> a heuristic that rebuilds the source .ass from the .ytt/.json3. It recovers <code>\fad</code>, <code>\move</code>, <code>\ytshake</code>, <code>\k</code>, <code>\ytkt</code>, <code>\t</code> and <code>\ytchroma</code>, and styles with several shadows.</li>
+    <li><b>Comparison:</b> rebuilds the .ytt from the recovered .ass and shows both side by side, with the similarity every 100 ms.</li>
+    <li><b>.ytt preview:</b> a 16:9 player with a timeline, a video from your computer, full screen and a download button.</li>
+    <li><b>Debug table:</b> in the preview, shows what each line draws and the likely .ass tags.</li>
+    <li><b>Update files:</b> when an option changes, the loaded files are converted again on their own.</li>
+    <li><b>True fade:</b> an option that removes the shadow/outline once the text opacity drops below a percentage.</li>
+  </ul>
+
+  <h2 id="en-hierarchy">Tag hierarchy</h2>
+  <p>In the original, the tags that change opacity have no order among themselves: each one writes the segment's color/opacity and the last one wins. At the end, the .ytt writer makes every shadow opaque, so with <code>\fad</code>/<code>\fade</code> and <code>\ytkt(Fade)</code> the text fades out (or in) while the outline stays whole, like a trail.
+    Here the tags <b>compose</b>. The hierarchy is on by default (the "Tag hierarchy" box on the page; on the command line, <code>--modo-original</code> turns it off).</p>
+  <ul>
+    <li><b>Opacity multiplies.</b> A syllable coming in with <code>\ytkt(Fade)</code> (30%) at the end of a <code>\fad</code> (50%) ends up at 15%.</li>
+    <li><b>Outline during fades.</b> While the text is above the cutoff (<b>40%</b> by default), the outline color moves from its own color to the text color, reaching it exactly at the cutoff. Below the cutoff the outline is removed and the text fades alone, like in libass. With <code>\ytkt(Fade)</code> it's the reverse: the syllable comes in with just the text and gets its outline from 40% on.</li>
+    <li><b>Offset shadows during fades.</b> Soft shadow, hard shadow and bevel don't move to the text color, because they'd become a bright blur. Dark ones become YouTube's automatic shadow (#222222 with the text's opacity) and fade along. Colored ones stay until the cutoff.</li>
+    <li><b>Several shadows split the opacity.</b> The .ytt draws the text once per shadow type. Each copy gets <code>1 - (1 - a)^(1/N)</code>, so together they give the requested opacity <code>a</code> instead of adding up.</li>
+    <li><b>A transparent shadow with no transition</b> (for example, a style with shadow <code>&amp;H80000000</code> and opaque text) stays opaque, as in the original.</li>
+  </ul>
+  <p>The details are in <a href="https://github.com/unnamed-orbert/YTSubconverter-JSversion/blob/main/docs/hierarquia-de-tags.md">docs/hierarquia-de-tags.md</a> (in Portuguese).</p>
+
+  <h2 id="en-fixes">Fixes that always apply</h2>
+  <p>Cases where the original errored, ignored the tag or undid the effect. They apply with or without the hierarchy.</p>
+  <div class="table"><table>
+    <tr><th>Case</th><th>Original</th><th>This version</th></tr>
+    <tr><td><code>\ytchroma</code> + <code>\k</code></td><td>Karaoke restarted from zero in the incoming and outgoing copies.</td><td>Karaoke carries on from where it was during the copies.</td></tr>
+    <tr><td><code>\ytchroma</code> + karaoke or color <code>\t</code></td><td>The copies were painted back in the line's colors and the effect disappeared (with <code>\ytkt(Fade)</code> + <code>\fad</code>, the copies looked like the line itself).</td><td>The copies keep the chroma color and only inherit the opacity and the fade.</td></tr>
+    <tr><td><code>\fade(in,out)</code></td><td>Only the 7-value form was accepted. The 2-value form was ignored and the line had no fade.</td><td>Works like <code>\fad</code>, as in libass and VSFilter.</td></tr>
+    <tr><td>Saving .ass with a shadow combination that has no style</td><td>Error (<code>NullReferenceException</code>).</td><td>Creates a <code>YT&lt;shadows&gt;[Box]</code> style (e.g. <code>YTGlowSoftShadowHardShadowBevel</code>), and the reader works out the shadows from the name.</td></tr>
+  </table></div>
+
+  <h2 id="en-out">What was left out</h2>
+  <ul>
+    <li><b>.ttml:</b> not read or written.</li>
+    <li><b>"Visual" mode of the .ass output</b> (<code>VisualizingAssDocument</code>): not ported.</li>
+    <li><b>Style options window:</b> there isn't one. The shadow type comes from the style name (<code>YTGlow</code>, <code>YTSoftShadow</code>…), and a <code>StyleOptions.xml</code> from the original still works.</li>
+  </ul>
+
+  <h2 id="en-identical">Output identical to the original</h2>
+  <p>To produce exactly the same .ytt as YTSubConverter:</p>
+  <ul>
+    <li>on the page, uncheck "Tag hierarchy" and "During fades, remove shadow/outline";</li>
+    <li>on the command line, use <code>--modo-original</code> and don't use <code>--fade-sombras</code>.</li>
+  </ul>
+  <p>The <a href="#en-fixes">fixes that always apply</a> only change files that hit those cases, where the original errored or lost the effect. For .srt output from a .ytt/.json3, the duplication fix is on (turn it off with the checkbox or <code>--manter-duplicacao</code>).</p>
+  </article>
+
+  <article data-lang="es" lang="es" hidden>
+  <h1>Diferencias con el original</h1>
+  <p class="sub">Qué cambia entre el <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a> original (C#) y esta versión en JavaScript: dónde funciona, formatos, herramientas nuevas, cambios en la conversión y lo que quedó fuera.
+    Para usar el conversor, mira la <a href="../../documentacao/">documentación</a>.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#es-donde">Dónde funciona</a></li>
+    <li><a href="#es-formatos">Formatos y archivos</a></li>
+    <li><a href="#es-herramientas">Herramientas nuevas</a></li>
+    <li><a href="#es-jerarquia">Jerarquía de etiquetas</a></li>
+    <li><a href="#es-correcciones">Correcciones que siempre valen</a></li>
+    <li><a href="#es-fuera">Lo que quedó fuera</a></li>
+    <li><a href="#es-identica">Salida idéntica al original</a></li>
+  </ol></nav>
+
+  <h2 id="es-donde">Dónde funciona</h2>
+  <div class="table"><table>
+    <tr><th></th><th>Original</th><th>Esta versión</th></tr>
+    <tr><td>Programa</td><td>Aplicación .NET con ventana (Windows, Mac, Linux).</td><td>Página en el navegador, sin instalar nada, y línea de comandos en Node.js 18+. Sin dependencias.</td></tr>
+    <tr><td>Archivos</td><td>Leídos del disco.</td><td>En el navegador el archivo no sale de la computadora: la conversión se hace en la propia página.</td></tr>
+    <tr><td>Idioma</td><td>Inglés.</td><td>Página y documentación en portugués, inglés, español y francés.</td></tr>
+    <tr><td>Resultado</td><td colspan="2">El mismo .ytt. El port reproduce los detalles de .NET (cuentas en <code>float</code>, redondeo bancario, <code>DateTime</code>, <code>Random</code> con semilla), y los archivos de prueba del original se comparan byte a byte.</td></tr>
+  </table></div>
+
+  <h2 id="es-formatos">Formatos y archivos</h2>
+  <div class="table"><table>
+    <tr><th></th><th>Original</th><th>Esta versión</th></tr>
+    <tr><td>Reconocer el formato</td><td>Por la extensión.</td><td>Por el contenido. Un archivo sin extensión, o con la extensión equivocada (<code>.txt</code>, <code>timedtext</code>), funciona igual.</td></tr>
+    <tr><td>.json3</td><td>No lo lee.</td><td>Lee el formato que descarga el reproductor de YouTube y lo convierte a .srt, .ass o .ytt.</td></tr>
+    <tr><td>Etiquetas en .srt/.sbv</td><td><code>&lt;i&gt; &lt;b&gt; &lt;u&gt; &lt;font color&gt;</code> quedaban como texto.</td><td>Se convierten en cursiva, negrita, subrayado y color en el .ytt y el .ass.</td></tr>
+    <tr><td>Salida .ytt</td><td>Casi todo en una sola línea.</td><td>Con saltos de línea, más fácil de leer y comparar. El contenido es el mismo.</td></tr>
+    <tr><td>Nombre de salida en la CLI</td><td>—</td><td>.ytt/.json3 pasan a .srt y el resto a .ytt. La entrada nunca se sobrescribe: si los nombres coinciden, la salida queda <code>nombre.convertido.ext</code>.</td></tr>
+  </table></div>
+
+  <h2 id="es-herramientas">Herramientas nuevas</h2>
+  <ul>
+    <li><b>Corregir duplicación masiva:</b> .json3/.ytt a .srt con una línea por frase, en vez de una línea por cuadro de animación. Es el port de la herramienta "YTT → SRT".</li>
+    <li><b>Recuperar etiquetas originales:</b> heurística que reconstruye el .ass de origen a partir del .ytt/.json3. Recupera <code>\fad</code>, <code>\move</code>, <code>\ytshake</code>, <code>\k</code>, <code>\ytkt</code>, <code>\t</code> y <code>\ytchroma</code>, y los estilos con varias sombras.</li>
+    <li><b>Comparador:</b> rehace el .ytt a partir del .ass recuperado y muestra los dos lado a lado, con la similitud cada 100 ms.</li>
+    <li><b>Vista previa del .ytt:</b> reproductor 16:9 con línea de tiempo, video de la computadora, pantalla completa y botón de descarga.</li>
+    <li><b>Tabla de depuración:</b> en la vista previa, muestra lo que dibuja cada línea y las etiquetas .ass probables.</li>
+    <li><b>Actualizar archivos:</b> al cambiar una opción, los archivos cargados se vuelven a convertir solos.</li>
+    <li><b>True fade:</b> opción que quita la sombra/contorno cuando la opacidad del texto baja de un porcentaje.</li>
+  </ul>
+
+  <h2 id="es-jerarquia">Jerarquía de etiquetas</h2>
+  <p>En el original, las etiquetas que cambian la opacidad no tienen orden entre sí: cada una escribe el color/opacidad del fragmento y la última gana. Al final, la escritura del .ytt deja toda sombra opaca, así que con <code>\fad</code>/<code>\fade</code> y <code>\ytkt(Fade)</code> el texto desaparece (o aparece) y el contorno queda entero, como un rastro.
+    Aquí las etiquetas <b>se combinan</b>. La jerarquía viene activada (casilla "Jerarquía de etiquetas" en la página; en la línea de comandos, <code>--modo-original</code> la desactiva).</p>
+  <ul>
+    <li><b>La opacidad se multiplica.</b> Una sílaba entrando con <code>\ytkt(Fade)</code> (30%) al final de un <code>\fad</code> (50%) queda con 15%.</li>
+    <li><b>Contorno en el fundido.</b> Mientras el texto está por encima del corte (<b>40%</b> por defecto), el color del contorno va de su color al color del texto, y lo alcanza justo en el corte. Por debajo del corte el contorno se quita y el texto desaparece solo, como en libass. Con <code>\ytkt(Fade)</code> es al revés: la sílaba entra solo con el texto y gana el contorno a partir del 40%.</li>
+    <li><b>Sombras desplazadas en el fundido.</b> La sombra suave, la dura y el relieve no van al color del texto, porque se volverían una mancha clara. Las oscuras pasan a la sombra automática de YouTube (#222222 con la opacidad del texto) y desaparecen junto. Las de color quedan hasta el corte.</li>
+    <li><b>Varias sombras reparten la opacidad.</b> El .ytt dibuja el texto una vez por tipo de sombra. Cada copia queda con <code>1 - (1 - a)^(1/N)</code>, para que juntas den la opacidad <code>a</code> pedida en vez de sumarse.</li>
+    <li><b>Una sombra transparente sin transición</b> (por ejemplo, un estilo con sombra <code>&amp;H80000000</code> y texto opaco) sigue opaca, como en el original.</li>
+  </ul>
+  <p>Los detalles están en <a href="https://github.com/unnamed-orbert/YTSubconverter-JSversion/blob/main/docs/hierarquia-de-tags.md">docs/hierarquia-de-tags.md</a> (en portugués).</p>
+
+  <h2 id="es-correcciones">Correcciones que siempre valen</h2>
+  <p>Casos en que el original daba error, ignoraba la etiqueta o deshacía el efecto. Valen con o sin la jerarquía.</p>
+  <div class="table"><table>
+    <tr><th>Caso</th><th>Original</th><th>Esta versión</th></tr>
+    <tr><td><code>\ytchroma</code> + <code>\k</code></td><td>El karaoke volvía a empezar de cero en las copias de entrada y de salida.</td><td>El karaoke sigue desde donde estaba durante las copias.</td></tr>
+    <tr><td><code>\ytchroma</code> + karaoke o <code>\t</code> de color</td><td>Las copias se pintaban de nuevo con los colores de la línea y el efecto desaparecía (con <code>\ytkt(Fade)</code> + <code>\fad</code>, las copias parecían la propia línea).</td><td>Las copias quedan en el color del chroma y solo heredan la opacidad y el fundido.</td></tr>
+    <tr><td><code>\fade(entrada,salida)</code></td><td>Solo aceptaba la forma de 7 valores. La de 2 se ignoraba y la línea quedaba sin fundido.</td><td>Funciona como <code>\fad</code>, igual que libass y VSFilter.</td></tr>
+    <tr><td>Guardar .ass con una combinación de sombras sin estilo</td><td>Error (<code>NullReferenceException</code>).</td><td>Crea un estilo <code>YT&lt;sombras&gt;[Box]</code> (ej.: <code>YTGlowSoftShadowHardShadowBevel</code>), y el lector deduce las sombras por el nombre.</td></tr>
+  </table></div>
+
+  <h2 id="es-fuera">Lo que quedó fuera</h2>
+  <ul>
+    <li><b>.ttml:</b> no se lee ni se escribe.</li>
+    <li><b>Modo "visual" de la salida .ass</b> (<code>VisualizingAssDocument</code>): no portado.</li>
+    <li><b>Ventana de opciones de estilo:</b> no existe. El tipo de sombra viene del nombre del estilo (<code>YTGlow</code>, <code>YTSoftShadow</code>…), y un <code>StyleOptions.xml</code> del original sigue sirviendo.</li>
+  </ul>
+
+  <h2 id="es-identica">Salida idéntica al original</h2>
+  <p>Para generar exactamente el mismo .ytt que YTSubConverter:</p>
+  <ul>
+    <li>en la página, desmarca "Jerarquía de etiquetas" y "En los fundidos, quitar sombra/contorno";</li>
+    <li>en la línea de comandos, usa <code>--modo-original</code> y no uses <code>--fade-sombras</code>.</li>
+  </ul>
+  <p>Las <a href="#es-correcciones">correcciones que siempre valen</a> solo cambian los archivos que caen en esos casos, en los que el original daba error o perdía el efecto. En la salida .srt de un .ytt/.json3, la corrección de duplicación viene activada (desactívala en la casilla o con <code>--manter-duplicacao</code>).</p>
+  </article>
+
+  <article data-lang="fr" lang="fr" hidden>
+  <h1>Différences avec l'original</h1>
+  <p class="sub">Ce qui change entre le <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a> d'origine (C#) et cette version en JavaScript : où il tourne, formats, nouveaux outils, changements dans la conversion et ce qui a été laissé de côté.
+    Pour utiliser le convertisseur, voir la <a href="../../documentacao/">documentation</a>.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#fr-ou">Où il tourne</a></li>
+    <li><a href="#fr-formats">Formats et fichiers</a></li>
+    <li><a href="#fr-outils">Nouveaux outils</a></li>
+    <li><a href="#fr-hierarchie">Hiérarchie des balises</a></li>
+    <li><a href="#fr-corrections">Corrections toujours actives</a></li>
+    <li><a href="#fr-absent">Ce qui a été laissé de côté</a></li>
+    <li><a href="#fr-identique">Sortie identique à l'original</a></li>
+  </ol></nav>
+
+  <h2 id="fr-ou">Où il tourne</h2>
+  <div class="table"><table>
+    <tr><th></th><th>Original</th><th>Cette version</th></tr>
+    <tr><td>Programme</td><td>Application .NET avec fenêtre (Windows, Mac, Linux).</td><td>Une page dans le navigateur, sans rien installer, et une ligne de commande sous Node.js 18+. Sans dépendances.</td></tr>
+    <tr><td>Fichiers</td><td>Lus sur le disque.</td><td>Dans le navigateur, le fichier ne quitte pas l'ordinateur : la conversion se fait dans la page elle-même.</td></tr>
+    <tr><td>Langue</td><td>Anglais.</td><td>Page et documentation en portugais, anglais, espagnol et français.</td></tr>
+    <tr><td>Résultat</td><td colspan="2">Le même .ytt. Le portage reproduit les détails de .NET (calculs en <code>float</code>, arrondi bancaire, <code>DateTime</code>, <code>Random</code> avec graine), et les fichiers de test de l'original sont comparés octet par octet.</td></tr>
+  </table></div>
+
+  <h2 id="fr-formats">Formats et fichiers</h2>
+  <div class="table"><table>
+    <tr><th></th><th>Original</th><th>Cette version</th></tr>
+    <tr><td>Reconnaître le format</td><td>Par l'extension.</td><td>Par le contenu. Un fichier sans extension, ou avec la mauvaise (<code>.txt</code>, <code>timedtext</code>), fonctionne pareil.</td></tr>
+    <tr><td>.json3</td><td>Non lu.</td><td>Lit le format que télécharge le lecteur YouTube et le convertit en .srt, .ass ou .ytt.</td></tr>
+    <tr><td>Balises dans .srt/.sbv</td><td><code>&lt;i&gt; &lt;b&gt; &lt;u&gt; &lt;font color&gt;</code> restaient en texte.</td><td>Deviennent italique, gras, souligné et couleur dans le .ytt et le .ass.</td></tr>
+    <tr><td>Sortie .ytt</td><td>Presque tout sur une seule ligne.</td><td>Avec des sauts de ligne, plus facile à lire et à comparer. Le contenu est le même.</td></tr>
+    <tr><td>Nom de sortie en ligne de commande</td><td>—</td><td>.ytt/.json3 deviennent .srt et le reste .ytt. L'entrée n'est jamais écrasée : si les noms coïncident, la sortie est <code>nom.convertido.ext</code>.</td></tr>
+  </table></div>
+
+  <h2 id="fr-outils">Nouveaux outils</h2>
+  <ul>
+    <li><b>Corriger la duplication massive :</b> .json3/.ytt vers .srt avec une ligne par phrase, au lieu d'une ligne par image d'animation. C'est le portage de l'outil « YTT → SRT ».</li>
+    <li><b>Récupérer les balises d'origine :</b> une heuristique qui reconstruit le .ass source à partir du .ytt/.json3. Elle récupère <code>\fad</code>, <code>\move</code>, <code>\ytshake</code>, <code>\k</code>, <code>\ytkt</code>, <code>\t</code> et <code>\ytchroma</code>, ainsi que les styles à plusieurs ombres.</li>
+    <li><b>Comparaison :</b> refait le .ytt à partir du .ass récupéré et montre les deux côte à côte, avec la similarité toutes les 100 ms.</li>
+    <li><b>Aperçu du .ytt :</b> lecteur 16:9 avec ligne de temps, vidéo de l'ordinateur, plein écran et bouton de téléchargement.</li>
+    <li><b>Tableau de débogage :</b> dans l'aperçu, montre ce que dessine chaque ligne et les balises .ass probables.</li>
+    <li><b>Mettre à jour les fichiers :</b> quand une option change, les fichiers chargés sont reconvertis tout seuls.</li>
+    <li><b>True fade :</b> option qui retire l'ombre/le contour quand l'opacité du texte passe sous un pourcentage.</li>
+  </ul>
+
+  <h2 id="fr-hierarchie">Hiérarchie des balises</h2>
+  <p>Dans l'original, les balises qui changent l'opacité n'ont pas d'ordre entre elles : chacune écrit la couleur/l'opacité du segment et la dernière gagne. À la fin, l'écriture du .ytt rend toute ombre opaque, donc avec <code>\fad</code>/<code>\fade</code> et <code>\ytkt(Fade)</code> le texte disparaît (ou apparaît) et le contour reste entier, comme une traînée.
+    Ici les balises <b>se composent</b>. La hiérarchie est activée par défaut (case « Hiérarchie des balises » sur la page ; en ligne de commande, <code>--modo-original</code> la désactive).</p>
+  <ul>
+    <li><b>L'opacité se multiplie.</b> Une syllabe qui entre avec <code>\ytkt(Fade)</code> (30 %) à la fin d'un <code>\fad</code> (50 %) est à 15 %.</li>
+    <li><b>Contour pendant les fondus.</b> Tant que le texte est au-dessus du seuil (<b>40 %</b> par défaut), la couleur du contour va de sa couleur à celle du texte, et l'atteint exactement au seuil. Sous le seuil, le contour est retiré et le texte disparaît seul, comme dans libass. Avec <code>\ytkt(Fade)</code> c'est l'inverse : la syllabe entre avec le texte seul et prend son contour à partir de 40 %.</li>
+    <li><b>Ombres décalées pendant les fondus.</b> L'ombre douce, l'ombre dure et le relief ne prennent pas la couleur du texte, car elles deviendraient un flou clair. Les sombres deviennent l'ombre automatique de YouTube (#222222 avec l'opacité du texte) et disparaissent avec lui. Les colorées restent jusqu'au seuil.</li>
+    <li><b>Plusieurs ombres se partagent l'opacité.</b> Le .ytt dessine le texte une fois par type d'ombre. Chaque copie reçoit <code>1 - (1 - a)^(1/N)</code>, pour qu'ensemble elles donnent l'opacité <code>a</code> demandée au lieu de s'additionner.</li>
+    <li><b>Une ombre transparente sans transition</b> (par exemple un style avec l'ombre <code>&amp;H80000000</code> et un texte opaque) reste opaque, comme dans l'original.</li>
+  </ul>
+  <p>Les détails sont dans <a href="https://github.com/unnamed-orbert/YTSubconverter-JSversion/blob/main/docs/hierarquia-de-tags.md">docs/hierarquia-de-tags.md</a> (en portugais).</p>
+
+  <h2 id="fr-corrections">Corrections toujours actives</h2>
+  <p>Les cas où l'original plantait, ignorait la balise ou défaisait l'effet. Elles s'appliquent avec ou sans la hiérarchie.</p>
+  <div class="table"><table>
+    <tr><th>Cas</th><th>Original</th><th>Cette version</th></tr>
+    <tr><td><code>\ytchroma</code> + <code>\k</code></td><td>Le karaoké repartait de zéro dans les copies d'entrée et de sortie.</td><td>Le karaoké continue là où il en était pendant les copies.</td></tr>
+    <tr><td><code>\ytchroma</code> + karaoké ou <code>\t</code> de couleur</td><td>Les copies étaient repeintes dans les couleurs de la ligne et l'effet disparaissait (avec <code>\ytkt(Fade)</code> + <code>\fad</code>, les copies ressemblaient à la ligne elle-même).</td><td>Les copies gardent la couleur du chroma et n'héritent que de l'opacité et du fondu.</td></tr>
+    <tr><td><code>\fade(entrée,sortie)</code></td><td>Seule la forme à 7 valeurs était acceptée. Celle à 2 valeurs était ignorée et la ligne n'avait pas de fondu.</td><td>Fonctionne comme <code>\fad</code>, comme dans libass et VSFilter.</td></tr>
+    <tr><td>Enregistrer un .ass avec une combinaison d'ombres sans style</td><td>Erreur (<code>NullReferenceException</code>).</td><td>Crée un style <code>YT&lt;ombres&gt;[Box]</code> (ex. : <code>YTGlowSoftShadowHardShadowBevel</code>), et le lecteur déduit les ombres à partir du nom.</td></tr>
+  </table></div>
+
+  <h2 id="fr-absent">Ce qui a été laissé de côté</h2>
+  <ul>
+    <li><b>.ttml :</b> ni lu ni écrit.</li>
+    <li><b>Mode « visuel » de la sortie .ass</b> (<code>VisualizingAssDocument</code>) : pas porté.</li>
+    <li><b>Fenêtre des options de style :</b> il n'y en a pas. Le type d'ombre vient du nom du style (<code>YTGlow</code>, <code>YTSoftShadow</code>…), et un <code>StyleOptions.xml</code> de l'original fonctionne toujours.</li>
+  </ul>
+
+  <h2 id="fr-identique">Sortie identique à l'original</h2>
+  <p>Pour produire exactement le même .ytt que YTSubConverter :</p>
+  <ul>
+    <li>sur la page, décochez « Hiérarchie des balises » et « Pendant les fondus, retirer l'ombre/le contour » ;</li>
+    <li>en ligne de commande, utilisez <code>--modo-original</code> et pas <code>--fade-sombras</code>.</li>
+  </ul>
+  <p>Les <a href="#fr-corrections">corrections toujours actives</a> ne changent que les fichiers concernés par ces cas, où l'original plantait ou perdait l'effet. Pour une sortie .srt depuis un .ytt/.json3, la correction de duplication est activée (désactivez-la avec la case ou <code>--manter-duplicacao</code>).</p>
+  </article>
+
+  <footer data-i18n-html="footer">Port em JavaScript do <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a>.</footer>
+</main>
+<script type="module" src="../../documentacao/docs.js"></script>
+</body>
+</html>

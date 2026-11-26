@@ -11,6 +11,7 @@
 <main class="docs">
   <div class="topbar">
     <a class="docs-link" href="../" data-i18n="docsBack">← Voltar ao conversor</a>
+    <a class="docs-link" href="../documentacao/diferencas/" data-i18n="diffLink">Diferenças em relação ao original</a>
     <label class="lang"><span data-i18n="language">Idioma</span>
       <select id="lang"></select>
     </label>
@@ -150,8 +151,9 @@
   <div class="table"><table>
     <tr><th>Opção</th><th>O que faz</th></tr>
     <tr><td>Converter para</td><td>.ytt (padrão), .ass ou .srt. Vale para todos os arquivos soltos depois de escolher.</td></tr>
-    <tr><td>No fade, tirar sombra/contorno abaixo de <b>45</b>% de opacidade</td><td>O YouTube não deixa a sombra/contorno ficar transparente (só a cor #222222), então num fade o texto some e o contorno fica, deixando um rastro preto.
-      Ligada, quando a opacidade do texto fica abaixo da porcentagem (1 a 100, padrão 45) a sombra/contorno é removida e o texto some sozinho (o "true fade"). Desligada, o resultado é igual ao YTSubConverter original.</td></tr>
+    <tr><td>No fade, tirar sombra/contorno abaixo de <b>40</b>% de opacidade</td><td>O YouTube não deixa a sombra/contorno ficar transparente (só a cor #222222), então num fade o texto some e o contorno fica, deixando um rastro preto.
+      Ligada, quando a opacidade do texto fica abaixo da porcentagem (1 a 100, padrão 40) a sombra/contorno é removida e o texto some sozinho (o "true fade"). Desligada, o resultado é igual ao YTSubConverter original.</td></tr>
+    <tr><td>Hierarquia de tags</td><td>Ligada por padrão. Fade, karaokê e \ytchroma se compõem em vez de um cancelar o outro: no fade a cor do contorno vai até a cor do texto e, abaixo da porcentagem ao lado, o contorno sai e o texto some sozinho. Desligada (e sem a opção acima), o .ytt sai igual ao do YTSubConverter original. Veja as <a href="../documentacao/diferencas/">diferenças em relação ao original</a>.</td></tr>
     <tr><td>Raio de captura do \ytchroma</td><td>Usado ao <a href="#pt-recuperar">recuperar tags</a>: distância (5 a 400 px, padrão 40) em que as cópias coloridas do \ytchroma são reconhecidas e ligadas à linha principal.</td></tr>
     <tr><td>Corrigir duplicação massiva</td><td>Só na saída .srt, ligada por padrão. Um .json3/.ytt cheio de animação repete a mesma frase em centenas de linhas, uma por quadro.
       A correção agrupa por posição na tela (grade de 20%), junta quadros com o mesmo texto (ou texto que cresce) separados por menos de 200 ms, descarta frases com menos de 300 ms, fica com a de baixo quando duas se sobrepõem e fecha buracos de até 500 ms.</td></tr>
@@ -196,7 +198,8 @@ node bin/ytsubconverter.js legenda.ytt --recuperar-tags</code></pre>
   <p>Sem saída, .ytt/.srv3/.json3 viram .srt e o resto vira .ytt, com o nome da entrada. A entrada nunca é sobrescrita: se os nomes coincidirem, a saída fica <code>nome.convertido.ext</code>. O formato da saída vem da extensão dela (.ytt, .srv3, .srt ou .ass).</p>
   <div class="table"><table>
     <tr><th>Opção</th><th>O que faz</th></tr>
-    <tr><td><code>--fade-sombras[=45]</code></td><td>No fade, tira sombra/contorno quando a opacidade do texto fica abaixo da porcentagem (padrão 45).</td></tr>
+    <tr><td><code>--fade-sombras[=40]</code></td><td>No fade, tira sombra/contorno quando a opacidade do texto fica abaixo da porcentagem (padrão 40).</td></tr>
+    <tr><td><code>--modo-original</code></td><td>Desliga a hierarquia de tags: as sombras ficam como no YTSubConverter original.</td></tr>
     <tr><td><code>--manter-duplicacao</code></td><td>Desliga a correção de duplicação na saída .srt (que é automática).</td></tr>
     <tr><td><code>--corrigir-duplicacao</code></td><td>Aplica a correção também na saída .ytt/.ass.</td></tr>
     <tr><td><code>--recuperar-tags</code></td><td>.ytt/.srv3/.json3 para .ass com as tags reconstruídas (saída padrão <code>nome.recuperado.ass</code>). Grava também <code>nome.StyleOptions.xml</code> quando há estilos com várias sombras e mostra as tags encontradas e a semelhança com o original.</td></tr>
@@ -371,8 +374,9 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
   <div class="table"><table>
     <tr><th>Option</th><th>What it does</th></tr>
     <tr><td>Convert to</td><td>.ytt (default), .ass or .srt. Applies to every file dropped after choosing.</td></tr>
-    <tr><td>During fades, remove shadow/outline below <b>45</b>% opacity</td><td>YouTube doesn't let the shadow/outline become transparent (only the color #222222), so in a fade the text disappears and the outline stays, leaving a black trail.
-      When on, once the text opacity falls below the percentage (1 to 100, default 45) the shadow/outline is removed and the text fades out cleanly (the "true fade"). When off, the result is the same as the original YTSubConverter.</td></tr>
+    <tr><td>During fades, remove shadow/outline below <b>40</b>% opacity</td><td>YouTube doesn't let the shadow/outline become transparent (only the color #222222), so in a fade the text disappears and the outline stays, leaving a black trail.
+      When on, once the text opacity falls below the percentage (1 to 100, default 40) the shadow/outline is removed and the text fades out cleanly (the "true fade"). When off, the result is the same as the original YTSubConverter.</td></tr>
+    <tr><td>Tag hierarchy</td><td>On by default. Fades, karaoke and \ytchroma compose instead of cancelling each other: during a fade the outline color moves to the text color and, below the percentage next to it, the outline is removed and the text fades alone. When off (and without the option above), the .ytt is the same as the original YTSubConverter's. See the <a href="../documentacao/diferencas/">differences from the original</a>.</td></tr>
     <tr><td>\ytchroma capture radius</td><td>Used when <a href="#en-recover">recovering tags</a>: the distance (5 to 400 px, default 40) within which the colored \ytchroma copies are recognized and linked to the main line.</td></tr>
     <tr><td>Fix massive duplication</td><td>Only for .srt output, on by default. A .json3/.ytt full of animation repeats the same sentence across hundreds of lines, one per frame.
       The fix groups by on-screen position (20% grid), merges frames with the same text (or growing text) less than 200 ms apart, drops sentences shorter than 300 ms, keeps the lower one when two overlap and closes gaps of up to 500 ms.</td></tr>
@@ -417,7 +421,8 @@ node bin/ytsubconverter.js subtitle.ytt --recuperar-tags</code></pre>
   <p>With no output, .ytt/.srv3/.json3 become .srt and everything else becomes .ytt, named after the input. The input is never overwritten: if the names collide, the output is <code>name.convertido.ext</code>. The output format comes from its extension (.ytt, .srv3, .srt or .ass).</p>
   <div class="table"><table>
     <tr><th>Option</th><th>What it does</th></tr>
-    <tr><td><code>--fade-sombras[=45]</code></td><td>In fades, removes shadow/outline once the text opacity falls below the percentage (default 45).</td></tr>
+    <tr><td><code>--fade-sombras[=40]</code></td><td>In fades, removes shadow/outline once the text opacity falls below the percentage (default 40).</td></tr>
+    <tr><td><code>--modo-original</code></td><td>Turns off the tag hierarchy: shadows behave as in the original YTSubConverter.</td></tr>
     <tr><td><code>--manter-duplicacao</code></td><td>Turns off the duplication fix for .srt output (which is automatic).</td></tr>
     <tr><td><code>--corrigir-duplicacao</code></td><td>Applies the fix to .ytt/.ass output as well.</td></tr>
     <tr><td><code>--recuperar-tags</code></td><td>.ytt/.srv3/.json3 to .ass with rebuilt tags (default output <code>name.recuperado.ass</code>). Also writes <code>name.StyleOptions.xml</code> when styles have several shadows, and prints the tags found and the similarity with the original.</td></tr>
@@ -592,8 +597,9 @@ const doc = YttDocument.parse(yttText);</code></pre>
   <div class="table"><table>
     <tr><th>Opción</th><th>Qué hace</th></tr>
     <tr><td>Convertir a</td><td>.ytt (predeterminado), .ass o .srt. Vale para todos los archivos que sueltes después de elegir.</td></tr>
-    <tr><td>En los fundidos, quitar sombra/contorno por debajo del <b>45</b>% de opacidad</td><td>YouTube no deja que la sombra/contorno sea transparente (solo el color #222222), así que en un fundido el texto desaparece y el contorno queda, dejando un rastro negro.
-      Activada, cuando la opacidad del texto baja de ese porcentaje (1 a 100, predeterminado 45) se quita la sombra/contorno y el texto desaparece solo (el "true fade"). Desactivada, el resultado es igual al YTSubConverter original.</td></tr>
+    <tr><td>En los fundidos, quitar sombra/contorno por debajo del <b>40</b>% de opacidad</td><td>YouTube no deja que la sombra/contorno sea transparente (solo el color #222222), así que en un fundido el texto desaparece y el contorno queda, dejando un rastro negro.
+      Activada, cuando la opacidad del texto baja de ese porcentaje (1 a 100, predeterminado 40) se quita la sombra/contorno y el texto desaparece solo (el "true fade"). Desactivada, el resultado es igual al YTSubConverter original.</td></tr>
+    <tr><td>Jerarquía de etiquetas</td><td>Activada por defecto. Fundido, karaoke y \ytchroma se combinan en vez de cancelarse: en el fundido el color del contorno va hacia el color del texto y, por debajo del porcentaje de al lado, el contorno se quita y el texto desaparece solo. Desactivada (y sin la opción de arriba), el .ytt sale igual al del YTSubConverter original. Mira las <a href="../documentacao/diferencas/">diferencias con el original</a>.</td></tr>
     <tr><td>Radio de captura del \ytchroma</td><td>Se usa al <a href="#es-recuperar">recuperar etiquetas</a>: distancia (5 a 400 px, predeterminado 40) dentro de la cual las copias de color del \ytchroma se reconocen y se unen a la línea principal.</td></tr>
     <tr><td>Corregir duplicación masiva</td><td>Solo en la salida .srt, activada por defecto. Un .json3/.ytt lleno de animación repite la misma frase en cientos de líneas, una por cuadro.
       La corrección agrupa por posición en pantalla (cuadrícula del 20%), une cuadros con el mismo texto (o texto que crece) separados por menos de 200 ms, descarta frases de menos de 300 ms, se queda con la de abajo cuando dos se solapan y cierra huecos de hasta 500 ms.</td></tr>
@@ -638,7 +644,8 @@ node bin/ytsubconverter.js subtitulo.ytt --recuperar-tags</code></pre>
   <p>Sin salida, .ytt/.srv3/.json3 pasan a .srt y el resto a .ytt, con el nombre de la entrada. La entrada nunca se sobrescribe: si los nombres coinciden, la salida queda <code>nombre.convertido.ext</code>. El formato de salida viene de su extensión (.ytt, .srv3, .srt o .ass).</p>
   <div class="table"><table>
     <tr><th>Opción</th><th>Qué hace</th></tr>
-    <tr><td><code>--fade-sombras[=45]</code></td><td>En los fundidos, quita sombra/contorno cuando la opacidad del texto baja del porcentaje (predeterminado 45).</td></tr>
+    <tr><td><code>--fade-sombras[=40]</code></td><td>En los fundidos, quita sombra/contorno cuando la opacidad del texto baja del porcentaje (predeterminado 40).</td></tr>
+    <tr><td><code>--modo-original</code></td><td>Desactiva la jerarquía de etiquetas: las sombras quedan como en el YTSubConverter original.</td></tr>
     <tr><td><code>--manter-duplicacao</code></td><td>Desactiva la corrección de duplicación en la salida .srt (que es automática).</td></tr>
     <tr><td><code>--corrigir-duplicacao</code></td><td>Aplica la corrección también en la salida .ytt/.ass.</td></tr>
     <tr><td><code>--recuperar-tags</code></td><td>.ytt/.srv3/.json3 a .ass con las etiquetas reconstruidas (salida predeterminada <code>nombre.recuperado.ass</code>). También guarda <code>nombre.StyleOptions.xml</code> cuando hay estilos con varias sombras y muestra las etiquetas encontradas y la similitud con el original.</td></tr>
@@ -813,8 +820,9 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
   <div class="table"><table>
     <tr><th>Option</th><th>Effet</th></tr>
     <tr><td>Convertir en</td><td>.ytt (par défaut), .ass ou .srt. S'applique à tous les fichiers déposés après le choix.</td></tr>
-    <tr><td>Pendant les fondus, retirer l'ombre/le contour sous <b>45</b> % d'opacité</td><td>YouTube ne laisse pas l'ombre/le contour devenir transparent (seule la couleur #222222 le peut) : dans un fondu, le texte disparaît et le contour reste, ce qui laisse une traînée noire.
-      Activée, dès que l'opacité du texte passe sous le pourcentage (1 à 100, 45 par défaut) l'ombre/le contour est retiré et le texte disparaît proprement (le « true fade »). Désactivée, le résultat est identique au YTSubConverter d'origine.</td></tr>
+    <tr><td>Pendant les fondus, retirer l'ombre/le contour sous <b>40</b> % d'opacité</td><td>YouTube ne laisse pas l'ombre/le contour devenir transparent (seule la couleur #222222 le peut) : dans un fondu, le texte disparaît et le contour reste, ce qui laisse une traînée noire.
+      Activée, dès que l'opacité du texte passe sous le pourcentage (1 à 100, 40 par défaut) l'ombre/le contour est retiré et le texte disparaît proprement (le « true fade »). Désactivée, le résultat est identique au YTSubConverter d'origine.</td></tr>
+    <tr><td>Hiérarchie des balises</td><td>Activée par défaut. Fondu, karaoké et \ytchroma se composent au lieu de s'annuler : pendant un fondu la couleur du contour va vers celle du texte et, sous le pourcentage voisin, le contour est retiré et le texte disparaît seul. Désactivée (et sans l'option ci-dessus), le .ytt est identique à celui du YTSubConverter d'origine. Voir les <a href="../documentacao/diferencas/">différences avec l'original</a>.</td></tr>
     <tr><td>Rayon de capture du \ytchroma</td><td>Sert à <a href="#fr-recuperer">récupérer les balises</a> : distance (5 à 400 px, 40 par défaut) dans laquelle les copies colorées du \ytchroma sont reconnues et rattachées à la ligne principale.</td></tr>
     <tr><td>Corriger la duplication massive</td><td>Seulement pour la sortie .srt, activée par défaut. Un .json3/.ytt plein d'animations répète la même phrase sur des centaines de lignes, une par image.
       La correction regroupe par position à l'écran (grille de 20 %), fusionne les images au même texte (ou au texte qui s'allonge) séparées de moins de 200 ms, écarte les phrases de moins de 300 ms, garde la plus basse quand deux se chevauchent et comble les trous jusqu'à 500 ms.</td></tr>
@@ -859,7 +867,8 @@ node bin/ytsubconverter.js soustitre.ytt --recuperar-tags</code></pre>
   <p>Sans sortie, .ytt/.srv3/.json3 deviennent .srt et le reste .ytt, au nom de l'entrée. L'entrée n'est jamais écrasée : si les noms coïncident, la sortie est <code>nom.convertido.ext</code>. Le format de sortie vient de son extension (.ytt, .srv3, .srt ou .ass).</p>
   <div class="table"><table>
     <tr><th>Option</th><th>Effet</th></tr>
-    <tr><td><code>--fade-sombras[=45]</code></td><td>Pendant les fondus, retire l'ombre/le contour dès que l'opacité du texte passe sous le pourcentage (45 par défaut).</td></tr>
+    <tr><td><code>--fade-sombras[=40]</code></td><td>Pendant les fondus, retire l'ombre/le contour dès que l'opacité du texte passe sous le pourcentage (40 par défaut).</td></tr>
+    <tr><td><code>--modo-original</code></td><td>Désactive la hiérarchie des balises : les ombres restent comme dans le YTSubConverter d'origine.</td></tr>
     <tr><td><code>--manter-duplicacao</code></td><td>Désactive la correction de duplication pour la sortie .srt (automatique).</td></tr>
     <tr><td><code>--corrigir-duplicacao</code></td><td>Applique aussi la correction aux sorties .ytt/.ass.</td></tr>
     <tr><td><code>--recuperar-tags</code></td><td>.ytt/.srv3/.json3 vers .ass avec les balises reconstruites (sortie par défaut <code>nom.recuperado.ass</code>). Écrit aussi <code>nom.StyleOptions.xml</code> quand des styles ont plusieurs ombres, et affiche les balises trouvées et la similarité avec l'original.</td></tr>

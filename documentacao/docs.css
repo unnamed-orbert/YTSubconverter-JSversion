@@ -18,3 +18,4 @@ main.docs { max-width: 760px; }
 .docs .toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
 @media (max-width: 520px) { .docs .toc ol { columns: 1; } }
 .docs .tip { border-left: 3px solid var(--accent); padding: 4px 12px; color: var(--muted); }
+.docs .topbar .docs-link:has(+ .docs-link) { margin-right: 0; }

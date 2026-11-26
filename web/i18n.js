@@ -44,6 +44,9 @@ const STRINGS = {
     converting: 'Convertendo…',
     done: 'Pronto',
     viewPreview: 'Ver preview',
+    refreshing: 'Atualizando…',
+    refreshBtn: 'Atualizar arquivos',
+    refreshTitle: 'Converte de novo os arquivos já carregados com as opções atuais. Acontece sozinho quando uma opção muda.',
     downloadFile: 'Baixar {name}',
     recoverBtn: 'Tentar recuperar tags originais (heurística)',
     recoverTitle:
@@ -179,6 +182,9 @@ const STRINGS = {
     converting: 'Converting…',
     done: 'Done',
     viewPreview: 'Preview',
+    refreshing: 'Updating…',
+    refreshBtn: 'Update files',
+    refreshTitle: 'Converts the files already loaded again with the current options. Happens on its own when an option changes.',
     downloadFile: 'Download {name}',
     recoverBtn: 'Try to recover the original tags (heuristic)',
     recoverTitle:
@@ -314,6 +320,9 @@ const STRINGS = {
     converting: 'Convirtiendo…',
     done: 'Listo',
     viewPreview: 'Vista previa',
+    refreshing: 'Actualizando…',
+    refreshBtn: 'Actualizar archivos',
+    refreshTitle: 'Vuelve a convertir los archivos ya cargados con las opciones actuales. Ocurre solo cuando cambia una opción.',
     downloadFile: 'Descargar {name}',
     recoverBtn: 'Intentar recuperar las etiquetas originales (heurística)',
     recoverTitle:
@@ -449,6 +458,9 @@ const STRINGS = {
     converting: 'Conversion…',
     done: 'Terminé',
     viewPreview: 'Aperçu',
+    refreshing: 'Mise à jour…',
+    refreshBtn: 'Mettre à jour les fichiers',
+    refreshTitle: 'Reconvertit les fichiers déjà chargés avec les options actuelles. Se fait tout seul quand une option change.',
     downloadFile: 'Télécharger {name}',
     recoverBtn: 'Essayer de récupérer les balises d’origine (heuristique)',
     recoverTitle:

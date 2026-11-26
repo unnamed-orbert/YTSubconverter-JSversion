@@ -24,8 +24,9 @@ function extOf(name) {
 }
 
 /**
- * Converte um arquivo. Devolve o arquivo para baixar (se houver conversão) e o texto .ytt usado no preview.
- * @returns {Promise<{download: {name: string, blob: Blob} | null, ytt: string | null}>}
+ * Converte um arquivo. Devolve o arquivo para baixar e o .ytt usado no preview.
+ * O preview sempre existe: se o destino não é .ytt, gera um .ytt só para mostrar.
+ * @returns {Promise<{download: {name: string, blob: Blob}, ytt: string | Uint8Array}>}
  */
 async function convertFile(file, targetExt) {
   const fullExt = extOf(file.name);
@@ -33,18 +34,23 @@ async function convertFile(file, targetExt) {
   // Um .txt qualquer ainda pode ser json3 ou .ytt: loadDocument reconhece pelo conteúdo.
   if (!isExtensionSupported(ext) && ext !== '.txt') throw new Error(`Formato não suportado (${ext || 'sem extensão'}). Use .srt, .sbv, .ass, .ytt ou .json3.`);
   const content = new Uint8Array(await file.arrayBuffer());
+  const isYtt = YTT_EXTENSIONS.includes(ext);
 
-  // Um .ytt com destino .ytt não precisa de conversão: só preview.
-  if (YTT_EXTENSIONS.includes(ext) && YTT_EXTENSIONS.includes(targetExt)) {
-    return { download: null, ytt: content };
+  // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio.
+  if (isYtt && YTT_EXTENSIONS.includes(targetExt)) {
+    return { download: { name: file.name, blob: file }, ytt: content };
   }
 
-  const doc = await loadDocument('x' + ext, content);
-  const text = convertDocument(doc, targetExt).save({ bom: true });
   const name = file.name.slice(0, file.name.length - fullExt.length) + targetExt;
-  // O BOM vem como ﻿ no texto; o Blob grava em UTF-8.
+  const text = convertDocument(await loadDocument('x' + ext, content), targetExt).save({ bom: true });
+  // O BOM vem como \uFEFF no texto; o Blob grava em UTF-8.
   const download = { name, blob: new Blob([text], { type: 'text/plain;charset=utf-8' }) };
-  const ytt = YTT_EXTENSIONS.includes(targetExt) ? text : YTT_EXTENSIONS.includes(ext) ? content : null;
+
+  let ytt;
+  if (YTT_EXTENSIONS.includes(targetExt)) ytt = text;
+  else if (isYtt) ytt = content;
+  // save() altera o documento, então o .ytt do preview sai de uma leitura nova.
+  else ytt = convertDocument(await loadDocument('x' + ext, content), '.ytt').save();
   return { download, ytt };
 }
 
@@ -60,9 +66,9 @@ function addRow(fileName) {
   return { li, status };
 }
 
-function showPreview(ytt, name) {
+function showPreview(ytt, name, download) {
   // O preview lê o .ytt gerado (o mesmo arquivo que vai para o YouTube).
-  preview.show(YttDocument.parse(ytt), name);
+  preview.show(YttDocument.parse(ytt), name, download);
 }
 
 async function handleFiles(files) {
@@ -73,24 +79,21 @@ async function handleFiles(files) {
       const { download, ytt } = await convertFile(file, targetExt);
       status.className = 'ok';
       status.textContent = 'Pronto';
-      const previewName = download && YTT_EXTENSIONS.includes(targetExt) ? download.name : file.name;
-      if (ytt) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = 'Ver preview';
-        btn.addEventListener('click', () => showPreview(ytt, previewName));
-        li.append(btn);
-      }
-      if (download) {
-        const a = document.createElement('a');
-        a.className = 'btn';
-        a.href = URL.createObjectURL(download.blob);
-        a.download = download.name;
-        a.textContent = `Baixar ${download.name}`;
-        li.append(a);
-        if (files.length === 1) a.click();
-      }
-      if (ytt && files.length === 1) showPreview(ytt, previewName);
+      const dl = { name: download.name, url: URL.createObjectURL(download.blob) };
+      const open = () => showPreview(ytt, file.name, dl);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'Ver preview';
+      btn.addEventListener('click', open);
+      const a = document.createElement('a');
+      a.className = 'btn';
+      a.href = dl.url;
+      a.download = dl.name;
+      a.textContent = `Baixar ${dl.name}`;
+      li.append(btn, a);
+
+      if (files.length === 1) open();
     } catch (err) {
       console.error(err);
       status.className = 'err';

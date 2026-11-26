@@ -116,3 +116,35 @@ test('linhas já lidas: sourceLines apontam para elas (usado pela tabela de debu
   assert.ok(e.sourceLines.length > 2);
   assert.ok(e.sourceLines.every((i) => lines[i].text === 'Oi'));
 });
+
+const karaokeLine = (type) =>
+  `0:00:01.00,0:00:05.00,YTGlow,,0,0,0,,{\\an4\\pos(60,360)${type}\\2a&HFF&}{\\k100}ca{\\k100}ra{\\k100}o{\\k100}kê`;
+
+test('\\ytkt(Glitch): o caractere aleatório some e a linha fica inteira', async () => {
+  const e = only(await roundTrip(karaokeLine('\\ytkt(Glitch)')));
+  assert.equal(e.text, 'caraokê');
+  assert.equal(tagOf(e, 'ytkt').text, '\\ytkt(Glitch)');
+  assert.match(e.assText, /\\k100\}ca\{\\k100\}ra\{\\k100\}o\{\\k100\}kê/);
+});
+
+test('\\ytkt(Cursor,...): cursor depois do que já foi cantado, com cores e intervalo', async () => {
+  const e = only(await roundTrip(karaokeLine('\\ytkt(Cursor,300,\\c&H00FFFF&,_,\\c&H0080FF&,|)')));
+  assert.equal(e.text, 'caraokê');
+  assert.equal(tagOf(e, 'ytkt').text, '\\ytkt(Cursor,300,\\c&H00FFFF&,_,\\c&H0080FF&,|)');
+});
+
+test('\\ytkt(LCursor): cursor antes da sílaba cantada, forma simples', async () => {
+  const e = only(await roundTrip(karaokeLine('\\ytktLCursor')));
+  assert.equal(e.text, 'caraokê');
+  assert.equal(tagOf(e, 'ytkt').text, '\\ytktLCursor');
+});
+
+test('texto que cresce (máquina de escrever) não vira cursor nem glitch', async () => {
+  const result = await roundTrip(
+    '0:00:01.00,0:00:01.50,YTGlow,,0,0,0,,{\\an5\\pos(640,360)}O cas',
+    '0:00:01.50,0:00:02.00,YTGlow,,0,0,0,,{\\an5\\pos(640,360)}O caste',
+    '0:00:02.00,0:00:03.00,YTGlow,,0,0,0,,{\\an5\\pos(640,360)}O castelo',
+  );
+  assert.deepEqual(result.events.map((e) => e.text), ['O cas', 'O caste', 'O castelo']);
+  assert.ok(result.events.every((e) => !tagOf(e, 'ytkt')));
+});

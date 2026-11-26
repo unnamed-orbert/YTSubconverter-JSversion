@@ -59,6 +59,7 @@ export function recoverTags(input) {
     if (input.videoDimensions) doc.videoDimensions = { ...input.videoDimensions };
   } else doc = YttDocument.parse(input);
   const frames = mergeShadowLayers(doc.lines.map((line, i) => toFrame(line, i)));
+  normalizeVariantTexts(frames);
   const tracks = buildTracks(frames);
 
   const results = [];
@@ -172,6 +173,170 @@ function assignPhrases(events, doc) {
       open.set(key, { id: e.phrase, end: e.end });
     }
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Passo 1b: karaokê Glitch e Cursor (o texto muda de um quadro para outro)
+//
+// \ytkt(Glitch): no primeiro quadro de cada sílaba, a sílaba que começa a ser cantada vira um caractere aleatório.
+// \ytkt(Cursor/LCursor): cada passo do karaokê ganha um cursor ("_", "|"...) inserido depois do que já foi cantado
+// (Cursor) ou antes da sílaba que está sendo cantada (LCursor), trocando a cada intervalo.
+// Os quadros seguidos no mesmo lugar formam uma cadeia; se o texto varia só desse jeito, o texto "de verdade" é
+// recuperado, os quadros são reescritos com ele (para virarem uma trilha só) e a variação fica anotada no quadro.
+
+const MAX_CURSOR_LENGTH = 4;
+
+function commonPrefix(a, b) {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i;
+}
+
+function commonSuffix(a, b, max) {
+  let i = 0;
+  while (i < max && a[a.length - 1 - i] === b[b.length - 1 - i]) i++;
+  return i;
+}
+
+/** Posição em que `text` tem algo inserido em relação a `base` (ou -1 se não for uma inserção). */
+function insertionAt(text, base) {
+  const d = text.length - base.length;
+  if (d === 0) return text === base ? null : -1;
+  if (d < 0 || d > MAX_CURSOR_LENGTH) return -1;
+  const p = commonPrefix(text, base);
+  for (let i = p; i >= 0; i--) {
+    if (text.slice(0, i) === base.slice(0, i) && text.slice(i + d) === base.slice(i)) return i;
+  }
+  return -1;
+}
+
+function similarTexts(a, b) {
+  if (a === b) return true;
+  const p = commonPrefix(a, b);
+  const sfx = commonSuffix(a, b, Math.min(a.length, b.length) - p);
+  const da = a.length - p - sfx;
+  const db = b.length - p - sfx;
+  // Uma sílaba inteira (até ~40 caracteres) trocada por um caractere só: \\ytkt(Glitch)
+  if (p + sfx >= 2 && ((da <= 12 && db <= 12) || (Math.min(da, db) <= 1 && Math.max(da, db) <= 40))) return true;
+  // O cursor mudou de lugar: tirando um trecho curto de cada um, sobra o mesmo texto
+  if (Math.abs(a.length - b.length) > MAX_CURSOR_LENGTH || Math.min(a.length, b.length) < 4) return false;
+  const without = (t) => {
+    const set = new Set([t]);
+    for (let len = 1; len <= MAX_CURSOR_LENGTH; len++) for (let i = 0; i + len <= t.length; i++) set.add(t.slice(0, i) + t.slice(i + len));
+    return set;
+  };
+  const wa = without(a);
+  for (const t of without(b)) if (t.length >= 3 && wa.has(t)) return true;
+  return false;
+}
+
+function buildChains(frames) {
+  const sorted = [...frames].sort((a, b) => a.start - b.start || a.sources[0] - b.sources[0]);
+  const chains = [];
+  const open = [];
+  for (const f of sorted) {
+    let best = null;
+    for (const chain of open) {
+      const last = chain[chain.length - 1];
+      if (Math.abs(last.end - f.start) > 2 || chain.taken === f.start) continue;
+      if (last.anchor !== f.anchor || !samePos(last.pos, f.pos) || !similarTexts(last.text, f.text)) continue;
+      if (!best || (best[best.length - 1].text !== f.text && last.text === f.text)) best = chain;
+    }
+    if (best) {
+      best.push(f);
+      best.taken = f.start;
+    } else {
+      best = [f];
+      best.taken = f.start;
+      chains.push(best);
+      open.push(best);
+    }
+    // Cadeias que já acabaram saem da lista
+    for (let i = open.length - 1; i >= 0; i--) if (open[i][open[i].length - 1].end < f.start - 2) open.splice(i, 1);
+  }
+  return chains;
+}
+
+function normalizeVariantTexts(frames) {
+  for (const chain of buildChains(frames)) {
+    const texts = new Set(chain.map((f) => f.text));
+    if (texts.size < 2) continue;
+    if (!tryCursor(chain)) tryGlitch(chain);
+  }
+}
+
+function setChars(frame, chars) {
+  frame.chars = chars;
+  frame.text = chars.map((c) => c.ch).join('');
+}
+
+function tryCursor(chain) {
+  const first = chain[0].text;
+  const candidates = new Set([first]);
+  for (let len = 1; len <= MAX_CURSOR_LENGTH; len++) {
+    for (let i = 0; i + len <= first.length; i++) candidates.add(first.slice(0, i) + first.slice(i + len));
+  }
+  let base = null;
+  for (const cand of candidates) {
+    if (cand.trim().length === 0 || (base && cand.length <= base.length)) continue;
+    if (chain.every((f) => insertionAt(f.text, cand) !== -1)) base = cand;
+  }
+  if (base == null) return false;
+  const inserted = chain.map((f) => {
+    const at = insertionAt(f.text, base);
+    return at == null ? null : { at, text: f.text.slice(at, at + f.text.length - base.length) };
+  });
+  const withCursor = inserted.filter((x) => x);
+  // O cursor é um texto curto, de poucas formas, presente em (quase) todos os quadros e que anda pela linha;
+  // texto que só cresce no fim (máquina de escrever) ou troca de palavra não é cursor.
+  if (withCursor.length < 3 || withCursor.length < chain.length * 0.9) return false;
+  const cursorTexts = new Set(withCursor.map((x) => x.text));
+  if (cursorTexts.size > 4 || base.trim().length < 3) return false;
+  if (new Set(withCursor.map((x) => x.at)).size < 2) return false;
+  for (let i = 1; i < withCursor.length; i++) if (withCursor[i].at < withCursor[i - 1].at) return false;
+
+  chain.forEach((f, i) => {
+    const ins = inserted[i];
+    if (!ins) return;
+    const cursorChars = f.chars.slice(ins.at, ins.at + ins.text.length);
+    f.cursor = { at: ins.at, text: ins.text, color: cursorChars.find((c) => !isBlank(c.ch))?.fore ?? cursorChars[0].fore };
+    setChars(f, [...f.chars.slice(0, ins.at), ...f.chars.slice(ins.at + ins.text.length)]);
+  });
+  return true;
+}
+
+function tryGlitch(chain) {
+  const counts = new Map();
+  for (const f of chain) counts.set(f.text, (counts.get(f.text) ?? 0) + (f.end - f.start));
+  const base = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const edits = [];
+  for (const f of chain) {
+    if (f.text === base) {
+      edits.push(null);
+      continue;
+    }
+    const p = commonPrefix(f.text, base);
+    const sfx = commonSuffix(f.text, base, Math.min(f.text.length, base.length) - p);
+    const middle = f.text.length - p - sfx;
+    const replaced = base.length - p - sfx;
+    // O resto da linha fica igual (só uma sílaba vira o caractere aleatório)
+    if (p + sfx < Math.max(2, base.length * 0.4)) return false;
+    // Um caractere no lugar da sílaba inteira (que pode ter um caractere só e coincidir em parte)
+    if (middle !== 1 || replaced < 1 || f.end - f.start > ANIM_FRAME_MAX_MS) return false;
+    edits.push({ at: p, replaced, middle });
+  }
+  const glitched = edits.filter((x) => x);
+  if (glitched.length === 0 || glitched.length > chain.length / 2) return false;
+
+  chain.forEach((f, i) => {
+    const e = edits[i];
+    if (!e) return;
+    const model = f.chars[e.at] ?? f.chars[e.at - 1];
+    const fill = [...base.slice(e.at, e.at + e.replaced)].map((ch) => ({ ...model, ch, shadows: new Map(model.shadows) }));
+    f.glitch = { at: e.at, text: f.text.slice(e.at, e.at + e.middle) };
+    setChars(f, [...f.chars.slice(0, e.at), ...fill, ...f.chars.slice(e.at + e.middle)]);
+  });
+  return true;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -400,6 +565,8 @@ function analyzeTrack(allFrames, doc, depth = 0) {
     event.karaoke = nativeKaraoke(event);
   }
   event.text = frames[0].text;
+  event.glitchFrames = frames.filter((f) => f.glitch);
+  event.cursorFrames = frames.filter((f) => f.cursor);
   detectMovement(event, doc);
   return [event];
 }
@@ -1106,6 +1273,84 @@ function sameTagState(a, b) {
   return transformTags(a, b) === '';
 }
 
+/** \\ytkt(Glitch) / \\ytkt(Cursor|LCursor,...) a partir do que normalizeVariantTexts anotou nos quadros. */
+function karaokeTypeTag(e) {
+  const { syllables } = e.karaoke;
+  if (e.cursorFrames.length > 0) {
+    const chars = e.frames[0].chars;
+    const singingAt = (t) => {
+      let s = 0;
+      while (s + 1 < syllables.length && syllables[s + 1].start <= t + 20) s++;
+      return syllables[s];
+    };
+    let after = 0;
+    let before = 0;
+    for (const f of e.cursorFrames) {
+      const syl = singingAt(f.start);
+      let lastText = syl.to;
+      while (lastText > syl.from && isBlank(chars[lastText].ch)) lastText--;
+      let firstText = syl.from;
+      while (firstText > 0 && isBlank(chars[firstText - 1].ch)) firstText--;
+      if (f.cursor.at >= lastText + 1 && f.cursor.at <= syl.to + 1) after++;
+      else if (f.cursor.at >= firstText && f.cursor.at <= syl.from) before++;
+    }
+    const type = before > after ? 'LCursor' : 'Cursor';
+
+    // Troca do cursor: a cada intervalo, contado do início da linha
+    const changes = [];
+    for (let i = 1; i < e.cursorFrames.length; i++) {
+      const a = e.cursorFrames[i - 1].cursor;
+      const b = e.cursorFrames[i].cursor;
+      if (a.text !== b.text || !sameColor(a.color, b.color, true)) changes.push(e.cursorFrames[i].start - e.start);
+    }
+    const key = (c) => `${c.text}|${colorToHex(c.color)}|${c.color.a}`;
+    const distinct = new Set(e.cursorFrames.map((f) => key(f.cursor)));
+    const sungColor = e.finalChars[e.visible[0]].fore;
+    const needsColor = [...distinct].length > 1 || !sameColor(e.cursorFrames[0].cursor.color, sungColor, true);
+
+    if (changes.length === 0) {
+      const c = e.cursorFrames[0].cursor;
+      const text = needsColor ? `\\ytkt(${type},\\c${assColor(c.color)},${c.text})` : c.text === '_' ? `\\ytkt${type}` : `\\ytkt(${type},${c.text})`;
+      return { text, reason: `cursor "${c.text}" ${type === 'Cursor' ? 'logo depois do que já foi cantado' : 'antes da sílaba que está sendo cantada'} em ${e.cursorFrames.length} quadros` };
+    }
+    // O intervalo é o menor passo que explica todas as trocas
+    const gaps = changes.map((t, i) => t - (i > 0 ? changes[i - 1] : 0)).filter((g) => g > 30);
+    let interval = round10(Math.min(...gaps));
+    for (const g of gaps) {
+      const k = Math.round(g / interval);
+      if (k >= 1 && Math.abs(g - k * interval) > 40) interval = round10(Math.min(interval, g));
+    }
+    interval = Math.max(interval, 10);
+    // Ordem do ciclo: o cursor de cada passo
+    const steps = new Map();
+    for (const f of e.cursorFrames) {
+      const step = Math.floor((f.start - e.start + 20) / interval);
+      if (!steps.has(step)) steps.set(step, f.cursor);
+    }
+    const ordered = [...steps.entries()].sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+    const n = distinct.size;
+    let cycle = ordered.slice(0, n);
+    // Confere o ciclo com os passos vistos; senão fica a ordem de aparição
+    const fits = [...steps.entries()].every(([step, c]) => key(cycle[step % n] ?? c) === key(c));
+    if (!fits) {
+      const seen = new Map();
+      for (const c of ordered) if (!seen.has(key(c))) seen.set(key(c), c);
+      cycle = [...seen.values()];
+    }
+    const args = cycle.map((c) => `${needsColor ? `\\c${assColor(c.color)}` : ''},${c.text}`).join(',');
+    return {
+      text: `\\ytkt(${type},${interval},${args})`,
+      reason:
+        `cursor ${type === 'Cursor' ? 'logo depois do que já foi cantado' : 'antes da sílaba que está sendo cantada'} em ${e.cursorFrames.length} quadros, ` +
+        `trocando entre ${cycle.map((c) => `"${c.text}"`).join(', ')} a cada ~${interval} ms`,
+    };
+  }
+  if (e.glitchFrames.length > 0) {
+    return { text: '\\ytkt(Glitch)', reason: `${e.glitchFrames.length} sílabas aparecem como um caractere aleatório no primeiro quadro em que são cantadas` };
+  }
+  return null;
+}
+
 function writeAss(doc, events) {
   const registry = new StyleRegistry();
   const out = [];
@@ -1177,7 +1422,11 @@ function writeAss(doc, events) {
       addTag('ytchroma', e.chroma.text, e.chroma.reason);
     }
 
-    if (e.karaoke?.fadeType) {
+    const karaokeType = e.karaoke ? karaokeTypeTag(e) : null;
+    if (karaokeType) {
+      builder._pendingTags += karaokeType.text;
+      addTag('ytkt', karaokeType.text, karaokeType.reason);
+    } else if (e.karaoke?.fadeType) {
       builder._pendingTags += '\\ytkt(Fade)';
       addTag('ytkt', '\\ytkt(Fade)', 'cada sílaba troca de cor aos poucos, não de uma vez');
     }

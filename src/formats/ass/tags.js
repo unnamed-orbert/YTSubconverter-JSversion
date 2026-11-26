@@ -516,7 +516,9 @@ const chromaTag = {
 
       if (chromaInMs > 0) {
         chromaLines.push(...createChromaLines(originalLine, colors, center, maxOffsetX, maxOffsetY, chromaInMs, true));
-        originalLine.start = roundTimeToFrameCenter(addMs(originalLine.start, chromaInMs));
+        const start = roundTimeToFrameCenter(addMs(originalLine.start, chromaInMs));
+        delayKaraokeStart(originalLine, start - originalLine.start);
+        originalLine.start = start;
       }
 
       if (chromaOutMs > 0) {
@@ -553,6 +555,22 @@ function parseChromaArgs(arg) {
   return { colors, alpha, maxOffsetX, maxOffsetY, chromaInMs, chromaOutMs };
 }
 
+/**
+ * Extension of the port (in C# the karaoke restarts): the karaoke timing (\\k) is relative to the line start, so
+ * when \\ytchroma moves the start of the line (or of the copies that fly out at the end) forward, the syllables
+ * already sung by then are made active from the new start, and the karaoke keeps going where it was.
+ */
+function delayKaraokeStart(line, ms) {
+  let rest = ms;
+  for (const section of line.sections) {
+    if (rest <= 0) break;
+    if (section.duration <= 0) continue;
+    const used = Math.min(rest, section.duration);
+    section.duration -= used;
+    rest -= used;
+  }
+}
+
 function* createChromaLines(originalLine, colors, center, maxOffsetX, maxOffsetY, durationMs, moveIn) {
   if (originalLine.sections.length === 0) return;
 
@@ -578,6 +596,7 @@ function* createChromaLines(originalLine, colors, center, maxOffsetX, maxOffsetY
       chromaLine.animations.push(new MoveAnimation(chromaLine.start, farPosition, chromaLine.end, nearPosition));
     } else {
       chromaLine.start = roundTimeToFrameCenter(addMs(originalLine.end, -durationMs));
+      delayKaraokeStart(chromaLine, chromaLine.start - originalLine.start);
       chromaLine.animations.push(new MoveAnimation(chromaLine.start, nearPosition, chromaLine.end, farPosition));
     }
 

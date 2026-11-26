@@ -4,7 +4,8 @@ import { InputFormat } from '../src/detect.js';
 import { YttDocument } from '../src/formats/ytt.js';
 import { YttPreview } from './preview.js';
 import { canFixMassiveDuplication, fixMassiveDuplication } from '../src/dedup.js';
-import { initI18n, setText } from './i18n.js';
+import { initI18n, setText, t } from './i18n.js';
+import { recoverTags } from '../src/recover/recoverTags.js';
 
 initI18n(document.getElementById('lang'));
 
@@ -123,6 +124,7 @@ async function handleFiles(files) {
       a.download = dl.name;
       setText(a, 'downloadFile', { name: dl.name });
       li.append(btn, a);
+      await addRecoverButton(li, file);
 
       if (files.length === 1) open();
     } catch (err) {
@@ -132,6 +134,59 @@ async function handleFiles(files) {
       setText(status, 'error', { message: err.i18nKey ? { key: err.i18nKey } : err.message });
     }
   }
+}
+
+/**
+ * Botão "Tentar recuperar tags originais (heurística)": só para .ytt/.srv3/.json3. Gera o .ass com as tags
+ * deduzidas dos quadros (src/recover/recoverTags.js) e, se houver estilos com várias sombras, o StyleOptions.xml.
+ */
+async function addRecoverButton(li, file) {
+  const content = new Uint8Array(await file.arrayBuffer());
+  const format = getInputFormat(file.name, content);
+  if (format !== InputFormat.Ytt && format !== InputFormat.Json3) return;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'recover';
+  setText(btn, 'recoverBtn');
+  btn.dataset.i18nTitle = 'recoverTitle';
+  btn.title = t('recoverTitle');
+  const info = document.createElement('span');
+  info.className = 'recover-info';
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    setText(info, 'recovering');
+    try {
+      // Deixa o navegador desenhar o "Recuperando…" antes do trabalho pesado
+      await new Promise((r) => setTimeout(r, 20));
+      const doc = await loadDocument(file.name, content);
+      const result = recoverTags({ lines: doc.lines, videoDimensions: doc.videoDimensions });
+      const name = baseName(file.name) + '.recuperado.ass';
+      const a = document.createElement('a');
+      a.className = 'btn';
+      a.href = URL.createObjectURL(new Blob(['\uFEFF' + result.ass], { type: 'text/plain;charset=utf-8' }));
+      a.download = name;
+      setText(a, 'downloadFile', { name });
+      const tags = Object.entries(result.summary).map(([tag, n]) => `\\${tag} ×${n}`).join(', ');
+      setText(info, 'recoverDone', { lines: result.events.length, tags: tags || { key: 'recoverNoTags' } });
+      const extra = [a];
+      if (result.styles.some((st) => st.shadowTypes.length > 1)) {
+        const x = document.createElement('a');
+        x.className = 'btn';
+        x.href = URL.createObjectURL(new Blob([result.styleOptionsXml], { type: 'application/xml' }));
+        x.download = 'StyleOptions.xml';
+        setText(x, 'recoverStyleOptions');
+        extra.push(x);
+      }
+      btn.replaceWith(...extra);
+      a.click();
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      setText(info, 'error', { message: err.message });
+    }
+  });
+  li.append(btn, info);
 }
 
 input.addEventListener('change', () => {

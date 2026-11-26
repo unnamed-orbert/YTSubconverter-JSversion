@@ -9,12 +9,29 @@ import { decodeText, readLines, SortedNumberMap, splitMax } from '../../util/mis
 import { f32 } from '../../util/numbers.js';
 import { roundTimeToFrameCenter } from '../../util/time.js';
 import { SubtitleDocument } from '../subtitleDocument.js';
-import { AssDialogue, AssDocumentSection, AssLine, AssSection, AssStyle, loadStyleOptionsFromString } from './assModel.js';
+import { AssDialogue, AssDocumentSection, AssLine, AssSection, AssStyle, AssStyleOptions, loadStyleOptionsFromString } from './assModel.js';
 import { createAssDocumentFrom, saveAssDocument } from './assWriter.js';
 import { DEFAULT_STYLE_OPTIONS_XML } from './defaultStyleOptions.js';
 import { DEFAULT_STYLES_ASS } from './defaultStyles.js';
 import { SimpleKaraokeType } from './karaokeTypes.js';
 import { createTagHandlers } from './tags.js';
+
+/**
+ * Extensão do port: sem StyleOptions para o estilo, um nome no padrão dos estilos do .ass recuperado de um .ytt
+ * (YTGlowSoftShadow, YTGlowBevelBox 2...) diz os tipos de sombra. O original usaria só a sombra suave.
+ */
+const inferredOptions = new Map();
+function inferStyleOptions(name) {
+  const match = /^YT(Plain|(?:Glow|SoftShadow|HardShadow|Bevel)+)(?:Box)?(?: \d+)?$/.exec(name ?? '');
+  if (!match) return null;
+  if (!inferredOptions.has(name)) {
+    const options = new AssStyleOptions();
+    options.name = name;
+    options.shadowTypes = match[1] === 'Plain' ? [] : match[1].match(/Glow|SoftShadow|HardShadow|Bevel/g);
+    inferredOptions.set(name, options);
+  }
+  return inferredOptions.get(name);
+}
 
 const EFFECT_NO_ANDROID_DARK_TEXT_HACK = 'no_android_dark_text_hack';
 const ZERO_WIDTH_SPACE = '​';
@@ -106,7 +123,7 @@ export class AssDocument extends SubtitleDocument {
   /** @param {string | AssStyle} nameOrStyle */
   getStyleOptions(nameOrStyle) {
     const name = nameOrStyle instanceof AssStyle ? nameOrStyle.name : nameOrStyle;
-    return this._styleOptions?.get(name) ?? null;
+    return this._styleOptions?.get(name) ?? inferStyleOptions(name);
   }
 
   _parseLine(dialogue, style, styleOptions) {

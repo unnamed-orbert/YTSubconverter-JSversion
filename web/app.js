@@ -7,6 +7,8 @@ import { YttPreview } from './preview.js';
 const drop = document.getElementById('drop');
 const input = document.getElementById('file');
 const format = document.getElementById('format');
+const fadeShadows = document.getElementById('fadeShadows');
+const fadeCutoff = document.getElementById('fadeCutoff');
 const results = document.getElementById('results');
 const preview = new YttPreview(document.getElementById('preview'));
 
@@ -24,20 +26,23 @@ function baseName(name) {
  * @returns {Promise<{download: {name: string, blob: Blob}, ytt: string | Uint8Array}>}
  */
 async function convertFile(file, targetExt) {
+  const cutoff = Number(fadeCutoff.value);
+  const options = { fadeShadowCutoff: fadeShadows.checked && cutoff > 0 ? Math.min(cutoff, 100) : null };
   const content = new Uint8Array(await file.arrayBuffer());
   const format = getInputFormat(file.name, content);
   if (!format) throw new Error('Não reconheci o formato desta legenda. Use .srt, .sbv, .ass, .ytt/.srv3 ou json3.');
   const isYtt = format === InputFormat.Ytt;
   const name = baseName(file.name) + targetExt;
 
-  // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio.
-  if (isYtt && YTT_EXTENSIONS.includes(targetExt)) {
+  // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio (a não ser que a opção do fade
+  // esteja ligada, que muda as sombras).
+  if (isYtt && YTT_EXTENSIONS.includes(targetExt) && options.fadeShadowCutoff == null) {
     return { download: { name, blob: file }, ytt: content };
   }
 
   const doc = await loadDocument(file.name, content);
   if (doc.lines.length === 0) throw new Error('Nenhuma legenda encontrada neste arquivo.');
-  const text = convertDocument(doc, targetExt).save({ bom: true });
+  const text = convertDocument(doc, targetExt, options).save({ bom: true });
   // O BOM vem como \uFEFF no texto; o Blob grava em UTF-8.
   const download = { name, blob: new Blob([text], { type: 'text/plain;charset=utf-8' }) };
 
@@ -45,7 +50,7 @@ async function convertFile(file, targetExt) {
   if (YTT_EXTENSIONS.includes(targetExt)) ytt = text;
   else if (isYtt) ytt = content;
   // save() altera o documento, então o .ytt do preview sai de uma leitura nova.
-  else ytt = convertDocument(await loadDocument(file.name, content), '.ytt').save();
+  else ytt = convertDocument(await loadDocument(file.name, content), '.ytt', options).save();
   return { download, ytt };
 }
 

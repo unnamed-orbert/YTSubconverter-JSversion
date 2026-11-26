@@ -59,8 +59,11 @@ export function isExtensionSupported(ext) {
   return ['.srt', '.sbv', '.ass', '.ytt', '.srv3', '.json3', '.json'].includes(ext.toLowerCase());
 }
 
-/** Converts a document to the format of the given extension. */
-export function convertDocument(doc, newExtension) {
+/**
+ * Converts a document to the format of the given extension.
+ * @param {object} [options] for .ytt/.srv3: {fadeShadowCutoff} (see YttDocument)
+ */
+export function convertDocument(doc, newExtension, options = {}) {
   switch (newExtension?.toLowerCase()) {
     case '.ass':
       // VisualizingAssDocument (visual = true in C#) is not ported
@@ -69,7 +72,7 @@ export function convertDocument(doc, newExtension) {
       return new SrtDocument(doc);
     case '.ytt':
     case '.srv3':
-      return new YttDocument(doc);
+      return new YttDocument(doc, options);
     default:
       throw new Error(`Formato de destino não suportado: ${newExtension}`);
   }

@@ -16,9 +16,16 @@ const PADDING_SPACE = '​ ​';
 const REFERENCE_VIDEO_DIMENSIONS = { width: 1280, height: 720 };
 
 export class YttDocument extends SubtitleDocument {
-  /** @param {SubtitleDocument} [doc] */
-  constructor(doc) {
+  /**
+   * @param {SubtitleDocument} [doc]
+   * @param {{fadeShadowCutoff?: number | null}} [options] fadeShadowCutoff: extensão do port (não existe no original).
+   *   O YouTube desenha opaca toda sombra/contorno com "ec" (só #222222 acompanha a opacidade do texto), então num
+   *   fade o texto some e o contorno fica, deixando um rastro. Com a opção (porcentagem, ex.: 45), quando a opacidade
+   *   do texto fica abaixo dela a sombra/contorno é removida e sobra só o texto, que some pela opacidade ("true fade").
+   */
+  constructor(doc, { fadeShadowCutoff = null } = {}) {
     super(doc);
+    this.fadeShadowCutoff = fadeShadowCutoff;
   }
 
   /**
@@ -214,6 +221,9 @@ export class YttDocument extends SubtitleDocument {
         section.foreColor = Color.fromArgbInt((section.foreColor.a << 24) | 0xfefefe);
       if (section.foreColor.a === 255) section.foreColor = changeAlpha(section.foreColor, 254);
       if (section.backColor.a === 255) section.backColor = changeAlpha(section.backColor, 254);
+
+      if (this.fadeShadowCutoff != null && section.foreColor.a < (this.fadeShadowCutoff / 100) * 255)
+        section.shadowColors.clear();
 
       for (const [type, color] of [...section.shadowColors]) {
         if (color.a === 0) section.shadowColors.delete(type);

@@ -53,6 +53,9 @@ To host your own copy: because it uses JavaScript modules, the page must be open
   The page will be at `https://<user>.github.io/<repository>/`.
 - **Locally:** run `npx serve .` (or `python3 -m http.server`) in the project folder and open the address shown.
 
+The full documentation (formats, every tag, the options, the CLI and the limitations) is at
+[`/documentacao`](https://petekamusic.com.br/documentacao/) (`documentacao/index.html`), also in the 4 languages.
+
 The page is available in Portuguese, English, Spanish and French (`web/i18n.js`). The initial language is the
 browser's (other languages fall back to English); it can be changed with the selector at the top and is saved in the browser.
 

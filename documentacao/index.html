@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentação · Conversor de legendas</title>
+<link rel="stylesheet" href="../web/style.css">
+<link rel="stylesheet" href="../documentacao/docs.css">
+</head>
+<body>
+<main class="docs">
+  <div class="topbar">
+    <a class="docs-link" href="../" data-i18n="docsBack">← Voltar ao conversor</a>
+    <label class="lang"><span data-i18n="language">Idioma</span>
+      <select id="lang"></select>
+    </label>
+  </div>
+
+  <article data-lang="pt" lang="pt-BR">
+  <h1>Documentação</h1>
+  <p class="sub">Tudo o que o conversor faz: formatos, conversões, tags e estilos, as opções da página, a linha de comando e as limitações.
+    É um port em JavaScript do <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a> que gera o mesmo .ytt que o programa original e roda inteiro no navegador.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#pt-formatos">Formatos e detecção</a></li>
+    <li><a href="#pt-conversoes">Conversões</a></li>
+    <li><a href="#pt-estilos">Estilos do .ass</a></li>
+    <li><a href="#pt-tags">Tags do .ass</a></li>
+    <li><a href="#pt-srt">Tags do .srt</a></li>
+    <li><a href="#pt-opcoes">Opções da página</a></li>
+    <li><a href="#pt-preview">Preview, tela cheia e debug</a></li>
+    <li><a href="#pt-recuperar">Recuperar tags e comparar</a></li>
+    <li><a href="#pt-cli">Linha de comando</a></li>
+    <li><a href="#pt-youtube">Enviar ao YouTube</a></li>
+    <li><a href="#pt-limites">Limitações</a></li>
+  </ol></nav>
+
+  <h2 id="pt-formatos">Formatos e detecção</h2>
+  <div class="table"><table>
+    <tr><th>Formato</th><th>Lê</th><th>Escreve</th><th>Observação</th></tr>
+    <tr><td><code>.ytt</code> / <code>.srv3</code></td><td>sim</td><td>sim</td><td>O formato com estilos do YouTube. Na leitura, os truques do conversor (espaços de enchimento, cópia clara do texto escuro etc.) são desfeitos.</td></tr>
+    <tr><td><code>.ass</code></td><td>sim</td><td>sim</td><td>Aegisub. A saída usa os estilos <code>YT*</code>.</td></tr>
+    <tr><td><code>.srt</code></td><td>sim</td><td>sim</td><td>Texto simples, com <code>&lt;b&gt; &lt;i&gt; &lt;u&gt; &lt;font color&gt;</code>.</td></tr>
+    <tr><td><code>.sbv</code></td><td>sim</td><td>não</td><td>O que o editor do YouTube baixa. O original também não escreve.</td></tr>
+    <tr><td><code>.json3</code></td><td>sim</td><td>não</td><td>O que o player do YouTube baixa (<code>/api/timedtext?…&amp;fmt=json3</code>). Extra, não existe no original.</td></tr>
+    <tr><td><code>.ttml</code></td><td>não</td><td>não</td><td>Ainda não portado.</td></tr>
+  </table></div>
+  <p>O formato é reconhecido <b>pelo conteúdo</b>, não pela extensão. Um json3 baixado como <code>timedtext</code> sem extensão, ou um .ytt salvo como <code>.txt</code>, funcionam igual.
+    A ordem de teste é: JSON com <code>events</code> (json3), XML com <code>&lt;timedtext&gt;</code> (ytt), seções do .ass com linhas <code>Dialogue:</code> (ass), tempos com <code>--&gt;</code> (srt) e tempos separados por vírgula (sbv).
+    A extensão só é usada quando o conteúdo não é reconhecido.</p>
+
+  <h2 id="pt-conversoes">Conversões</h2>
+  <div class="table"><table>
+    <tr><th>Entrada</th><th>Saída</th><th>O que acontece</th></tr>
+    <tr><td>.srt, .sbv, .ass</td><td>.ytt</td><td>A conversão principal: cores, posições, sombras, karaokê, fades e efeitos viram o .ytt pronto para o YouTube.</td></tr>
+    <tr><td>.srt, .sbv, .ass</td><td>.ass</td><td>Gera um .ass com os estilos <code>YT*</code> para continuar editando no Aegisub (útil para estilizar um .sbv baixado do YouTube).</td></tr>
+    <tr><td>.ytt, .json3</td><td>.srt</td><td>Texto limpo, uma linha por frase quando a correção de duplicação está ligada.</td></tr>
+    <tr><td>.ytt, .json3</td><td>.ass</td><td>Cada quadro de animação vira uma linha. Para reconstruir as tags, use <a href="#pt-recuperar">Recuperar tags</a>.</td></tr>
+    <tr><td>.json3</td><td>.ytt</td><td>Reescreve o json3 como .ytt.</td></tr>
+    <tr><td>.ytt</td><td>.ytt</td><td>O arquivo sai como entrou (a não ser que a opção de fade esteja ligada). Serve para ver o preview.</td></tr>
+  </table></div>
+  <p>O nome do arquivo baixado é o da entrada com a nova extensão (<code>legenda.json3.txt</code> vira <code>legenda.srt</code>). Os arquivos de texto saem em UTF-8 com BOM.</p>
+
+  <h2 id="pt-estilos">Estilos do .ass</h2>
+  <ul>
+    <li><b>Fonte.</b> O YouTube só aceita 7 fontes: Roboto (padrão), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva e Carrois Gothic SC. Outra fonte vira Roboto.</li>
+    <li><b>Tamanho.</b> O estilo "Default" (ou o primeiro, se não houver "Default") fica sempre com o tamanho padrão do YouTube e os outros são relativos a ele: Default 15 e outro estilo 30 dão 100% e 200%. O mínimo é 75%, e o app de Android ignora o tamanho.</li>
+    <li><b>Negrito, itálico, sublinhado</b> e as quatro cores: texto, karaokê não cantado, contorno e sombra.</li>
+    <li><b>Alinhamento.</b> Além da posição, define para onde a legenda se mexe quando o mouse passa no vídeo: 7/8/9 descem, 4/5/6 ficam e 1/2/3 sobem.</li>
+    <li><b>Contorno e sombra.</b> Só importa se o valor é 0 ou maior que 0. O <b>tipo</b> de sombra vem do nome do estilo:
+      <code>YTPlain</code> (sem), <code>YTGlow</code> (brilho, igual ao contorno), <code>YTSoftShadow</code> (sombra suave), <code>YTHardShadow</code> (sombra dura) e <code>YTBevel</code> (relevo).
+      As versões <code>…Box</code> têm fundo. Para combinar vários tipos no mesmo estilo, junte os nomes (<code>YTGlowSoftShadow</code>) ou use um <code>StyleOptions.xml</code> do YTSubConverter original.</li>
+  </ul>
+
+  <h2 id="pt-tags">Tags do .ass</h2>
+  <p>A legenda <a href="../exemplos/demonstracao-tags.ass">demonstracao-tags.ass</a> mostra todas elas, uma tela por grupo (o <a href="../exemplos/demonstracao-tags.ytt">.ytt convertido</a> pode ser aberto no preview).
+    As coordenadas usam a resolução do script (<code>PlayResX</code>/<code>PlayResY</code>, por exemplo 1280×720), as cores são <code>&amp;HBBGGRR&amp;</code> e a transparência vai de <code>&amp;H00&amp;</code> (opaco) a <code>&amp;HFF&amp;</code> (invisível).</p>
+
+  <h3>Texto e cor</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>O que faz</th></tr>
+    <tr><td><code>\b</code> <code>\i</code> <code>\u</code></td><td>Negrito, itálico e sublinhado (<code>\b1</code> liga, <code>\b0</code> desliga).</td></tr>
+    <tr><td><code>\fn</code></td><td>Fonte, só as 7 aceitas pelo YouTube.</td></tr>
+    <tr><td><code>\fs</code></td><td>Tamanho, relativo ao estilo "Default" (mínimo 75%).</td></tr>
+    <tr><td><code>\c</code> / <code>\1c</code></td><td>Cor do texto.</td></tr>
+    <tr><td><code>\2c</code></td><td>Cor do texto de karaokê ainda não cantado.</td></tr>
+    <tr><td><code>\3c</code></td><td>Cor do contorno.</td></tr>
+    <tr><td><code>\4c</code></td><td>Cor da sombra.</td></tr>
+    <tr><td><code>\1a</code></td><td>Transparência do texto.</td></tr>
+    <tr><td><code>\2a</code></td><td>Transparência do karaokê não cantado. Totalmente transparente usa o karaokê nativo do YouTube, que esconde o texto e o fundo ainda não cantados até no celular.</td></tr>
+    <tr><td><code>\3a</code></td><td>Transparência do fundo.</td></tr>
+    <tr><td><code>\4a</code></td><td>Transparência da sombra. Só funciona com a cor <code>&amp;H222222&amp;</code> e igual à do texto.</td></tr>
+    <tr><td><code>\alpha</code></td><td>Todas as transparências de uma vez.</td></tr>
+    <tr><td><code>\r</code>, <code>\rEstilo</code></td><td>Volta ao estilo da linha ou a outro estilo.</td></tr>
+    <tr><td><code>\N</code></td><td>Quebra de linha.</td></tr>
+  </table></div>
+
+  <h3>Posição, movimento e animação</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>O que faz</th></tr>
+    <tr><td><code>\an1</code> … <code>\an9</code></td><td>Alinhamento (posição no teclado numérico).</td></tr>
+    <tr><td><code>\pos(x,y)</code></td><td>Posição.</td></tr>
+    <tr><td><code>\move(x1,y1,x2,y2[,t1,t2])</code></td><td>Move de um ponto a outro, opcionalmente só entre t1 e t2 (ms).</td></tr>
+    <tr><td><code>\fad(entrada,saída)</code></td><td>Fade simples.</td></tr>
+    <tr><td><code>\fade(a1,a2,a3,t1,t2,t3,t4)</code></td><td>Fade completo. Sombra e contorno só acompanham o fade se forem <code>&amp;H222222&amp;</code>; veja a <a href="#pt-opcoes">opção de fade</a>.</td></tr>
+    <tr><td><code>\t([t1,t2,][acel,]tags)</code></td><td>Anima cores, transparências e tamanho, com tempo e aceleração.</td></tr>
+  </table></div>
+
+  <h3>Karaokê</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>O que faz</th></tr>
+    <tr><td><code>\k</code></td><td>Duração da sílaba, em centésimos de segundo. A sílaba troca da cor <code>\2c</code> para <code>\1c</code> quando é cantada.</td></tr>
+    <tr><td><code>\ytktFade</code></td><td>Karaokê com transição gradual. Fica bonito, mas gera arquivos grandes e pode travar alguns aparelhos.</td></tr>
+    <tr><td><code>\ytktGlitch</code></td><td>Cada sílaba aparece como caracteres aleatórios (latinos, chineses, japoneses ou coreanos) antes de virar o texto. Funciona melhor alinhado à esquerda e com o não cantado invisível.</td></tr>
+    <tr><td><code>\ytkt(Cursor,texto)</code></td><td>Coloca o texto (por exemplo <code>_</code>) depois da palavra que está sendo cantada.</td></tr>
+    <tr><td><code>\ytkt(Cursor,tags,texto)</code></td><td>Igual, com a aparência do cursor definida por tags.</td></tr>
+    <tr><td><code>\ytkt(Cursor,intervalo,tags1,texto1,tags2,texto2,…)</code></td><td>Cursor animado: cada quadro dura <code>intervalo</code> ms.</td></tr>
+    <tr><td><code>\ytkt(LCursor,…)</code></td><td>Como Cursor, mas antes (à esquerda) da palavra cantada.</td></tr>
+  </table></div>
+
+  <h3>Efeitos</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>O que faz</th></tr>
+    <tr><td><code>\ytshake</code></td><td>A legenda treme durante toda a duração, até 20 px da posição.</td></tr>
+    <tr><td><code>\ytshake(raio)</code>, <code>\ytshake(rx,ry)</code></td><td>Raio próprio, ou um raio para cada eixo.</td></tr>
+    <tr><td><code>\ytshake(raio,t1,t2)</code>, <code>\ytshake(rx,ry,t1,t2)</code></td><td>Treme só entre t1 e t2 (ms desde o início da linha).</td></tr>
+    <tr><td><code>\ytchroma</code></td><td>Aberração cromática: cópias vermelha, verde e azul se juntam no começo e se separam no fim (20 px, 270 ms).</td></tr>
+    <tr><td><code>\ytchroma(entrada,saída)</code></td><td>Tempo de junção e de separação, em ms.</td></tr>
+    <tr><td><code>\ytchroma(dx,dy,entrada,saída)</code></td><td>Distância da primeira cópia (a última fica no lado oposto). Pode ser negativa.</td></tr>
+    <tr><td><code>\ytchroma(cor1,cor2,…,alpha,dx,dy,entrada,saída)</code></td><td>Troca vermelho/verde/azul por qualquer número de cores (<code>&amp;H…&amp;</code>).</td></tr>
+  </table></div>
+
+  <h3>Só no PC</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>O que faz</th></tr>
+    <tr><td><code>\ytruby</code> / <code>\ytruby8</code> / <code>\ytruby2</code></td><td>Ruby (furigana): <code>{\ytruby}これは[漢/かん][字/じ]です</code>. 8 põe o ruby em cima (padrão), 2 embaixo. No celular aparece <code>漢(かん)</code>.</td></tr>
+    <tr><td><code>\ytsub</code>, <code>\ytsup</code>, <code>\ytsur</code></td><td>Subscrito, sobrescrito e volta ao normal.</td></tr>
+    <tr><td><code>\ytvert9</code></td><td>Texto vertical, colunas da direita para a esquerda.</td></tr>
+    <tr><td><code>\ytvert7</code></td><td>Texto vertical, colunas da esquerda para a direita.</td></tr>
+    <tr><td><code>\ytvert1</code></td><td>Legenda girada 90° no sentido anti-horário.</td></tr>
+    <tr><td><code>\ytvert3</code></td><td>Girada 90° com a ordem das linhas invertida.</td></tr>
+    <tr><td><code>\ytpack1</code> / <code>\ytpack0</code></td><td>Liga ou desliga o empacotamento do texto no espaço de um caractere largo (texto vertical).</td></tr>
+    <tr><td><code>\ytdir4</code> / <code>\ytdir6</code></td><td>Marca a linha como direita-para-esquerda (árabe numa legenda em inglês, por exemplo). O <code>\ytdir6</code> não funciona na prática por um bug do YouTube.</td></tr>
+  </table></div>
+
+  <h2 id="pt-srt">Tags do .srt</h2>
+  <p>O .srt aceita <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code> e <code>&lt;font color="#rrggbb"&gt;</code>. Não há posição: a legenda fica sempre embaixo, no centro. Veja <a href="../exemplos/demonstracao-tags.srt">demonstracao-tags.srt</a>.</p>
+
+  <h2 id="pt-opcoes">Opções da página</h2>
+  <div class="table"><table>
+    <tr><th>Opção</th><th>O que faz</th></tr>
+    <tr><td>Converter para</td><td>.ytt (padrão), .ass ou .srt. Vale para todos os arquivos soltos depois de escolher.</td></tr>
+    <tr><td>No fade, tirar sombra/contorno abaixo de <b>45</b>% de opacidade</td><td>O YouTube não deixa a sombra/contorno ficar transparente (só a cor #222222), então num fade o texto some e o contorno fica, deixando um rastro preto.
+      Ligada, quando a opacidade do texto fica abaixo da porcentagem (1 a 100, padrão 45) a sombra/contorno é removida e o texto some sozinho (o "true fade"). Desligada, o resultado é igual ao YTSubConverter original.</td></tr>
+    <tr><td>Raio de captura do \ytchroma</td><td>Usado ao <a href="#pt-recuperar">recuperar tags</a>: distância (5 a 400 px, padrão 40) em que as cópias coloridas do \ytchroma são reconhecidas e ligadas à linha principal.</td></tr>
+    <tr><td>Corrigir duplicação massiva</td><td>Só na saída .srt, ligada por padrão. Um .json3/.ytt cheio de animação repete a mesma frase em centenas de linhas, uma por quadro.
+      A correção agrupa por posição na tela (grade de 20%), junta quadros com o mesmo texto (ou texto que cresce) separados por menos de 200 ms, descarta frases com menos de 300 ms, fica com a de baixo quando duas se sobrepõem e fecha buracos de até 500 ms.</td></tr>
+    <tr><td>Idioma</td><td>Português, inglês, espanhol ou francês. Começa no idioma do navegador e fica salvo para as próximas visitas.</td></tr>
+  </table></div>
+  <p class="tip">Os arquivos nunca saem do seu computador: a conversão roda no navegador, com os mesmos módulos da linha de comando.</p>
+
+  <h2 id="pt-preview">Preview, tela cheia e debug</h2>
+  <ul>
+    <li><b>Preview.</b> Aparece depois de converter, ou ao soltar um .ytt/.srv3. Desenha a legenda numa área 16:9 com posição, fonte, tamanho, cores, fundo, contorno/sombra, karaokê, ruby e texto vertical. Tem Tocar/Pausar, linha do tempo e o botão de baixar o arquivo convertido.</li>
+    <li><b>Vídeo.</b> Em "Ver sobre um vídeo do seu computador" você escolhe um vídeo e vê a legenda por cima dele.</li>
+    <li><b>Tela cheia.</b> Botão "Tela cheia", tecla <kbd>F</kbd> ou clique duplo no vídeo.</li>
+    <li><b>Tabela de debug.</b> "Mostrar tabela de debug" lista, no tempo atual, cada linha na tela e o que cada trecho desenha, com os efeitos percebidos e as tags .ass prováveis. Passe o mouse numa linha da tabela para destacá-la no vídeo. "Copiar tabela" copia o conteúdo como texto.</li>
+  </ul>
+  <p>O preview é uma aproximação do player do YouTube. Truques que dependem de como o YouTube desenha (por exemplo, várias sombras na mesma linha) podem ficar um pouco diferentes, então confira no YouTube antes de publicar.</p>
+
+  <h2 id="pt-recuperar">Recuperar tags e comparar</h2>
+  <p>Converter um .ytt para .ass devolve cada quadro de animação como uma linha separada. O botão <b>"Tentar recuperar tags originais (heurística)"</b>, que aparece para cada .ytt/.srv3/.json3, faz o caminho contrário e tenta reconstruir o .ass de origem:</p>
+  <ul>
+    <li>junta as cópias de uma linha feitas para cada tipo de sombra num único estilo (<code>YTGlowSoftShadowHardShadowBevel</code>…);</li>
+    <li>junta quadros seguidos com o mesmo texto numa linha, e as linhas em frases como a correção de duplicação;</li>
+    <li>olha a linha inteira: opacidade de todas as letras mudando junta vira <code>\fad</code>/<code>\fade</code>, posição andando em linha reta vira <code>\move</code>, posição pulando em volta de um ponto vira <code>\ytshake</code>;</li>
+    <li>olha cada sílaba: cores mudando em sequência viram <code>\k</code> (e <code>\ytktFade</code> se a troca é gradual), o karaokê nativo vira <code>\k</code>, mudanças em momentos diferentes viram um <code>\t</code> por trecho;</li>
+    <li>texto que muda no mesmo lugar: sílaba que vira um caractere aleatório no primeiro quadro em que é cantada vira <code>\ytkt(Glitch)</code>, e um cursor curto que anda pela linha vira <code>\ytkt(Cursor,…)</code> ou <code>\ytkt(LCursor,…)</code>;</li>
+    <li>o rastro de cópias sem sombra, cada uma de uma cor, que se espalham em volta do texto vira <code>\ytchroma</code> (dentro do raio de captura).</li>
+  </ul>
+  <p>Baixa <code>nome.recuperado.ass</code> e, se algum estilo tem mais de uma sombra, um <code>StyleOptions.xml</code> para o YTSubConverter original. Tempos, raios e posições saem aproximados, porque o .ytt guarda posições em porcentagens inteiras e um estado a cada dois quadros.</p>
+  <p>Depois disso, <b>"Comparar original × refeito"</b> converte o .ass recuperado de volta para .ytt e mostra os dois lado a lado, tocando juntos. A cada 100 ms as linhas na tela dos dois lados são pareadas (por texto e posição) e comparadas por texto, posição, cor e opacidade.
+    A página mostra a semelhança geral e por propriedade, uma barra do tempo com a semelhança em cada ponto, botões para pular entre as diferenças e, no instante atual, o que difere em cada linha (contorno laranja: linha diferente; vermelho: linha que só existe de um lado). O .ytt refeito também pode ser baixado.</p>
+
+  <h2 id="pt-cli">Linha de comando</h2>
+  <p>Precisa do Node.js 18 ou mais novo, sem dependências.</p>
+  <pre><code>node bin/ytsubconverter.js &lt;entrada&gt; [saída] [opções]
+
+node bin/ytsubconverter.js legenda.srt                # gera legenda.ytt
+node bin/ytsubconverter.js legenda.ass saida.ytt
+node bin/ytsubconverter.js legenda.ytt                # gera legenda.srt
+node bin/ytsubconverter.js legenda.srt saida.ass      # .ass com os estilos YT*
+node bin/ytsubconverter.js legenda.json3 saida.srt    # .srt limpo, uma linha por frase
+node bin/ytsubconverter.js legenda.ytt --recuperar-tags</code></pre>
+  <p>Sem saída, .ytt/.srv3/.json3 viram .srt e o resto vira .ytt, com o nome da entrada. A entrada nunca é sobrescrita: se os nomes coincidirem, a saída fica <code>nome.convertido.ext</code>. O formato da saída vem da extensão dela (.ytt, .srv3, .srt ou .ass).</p>
+  <div class="table"><table>
+    <tr><th>Opção</th><th>O que faz</th></tr>
+    <tr><td><code>--fade-sombras[=45]</code></td><td>No fade, tira sombra/contorno quando a opacidade do texto fica abaixo da porcentagem (padrão 45).</td></tr>
+    <tr><td><code>--manter-duplicacao</code></td><td>Desliga a correção de duplicação na saída .srt (que é automática).</td></tr>
+    <tr><td><code>--corrigir-duplicacao</code></td><td>Aplica a correção também na saída .ytt/.ass.</td></tr>
+    <tr><td><code>--recuperar-tags</code></td><td>.ytt/.srv3/.json3 para .ass com as tags reconstruídas (saída padrão <code>nome.recuperado.ass</code>). Grava também <code>nome.StyleOptions.xml</code> quando há estilos com várias sombras e mostra as tags encontradas e a semelhança com o original.</td></tr>
+    <tr><td><code>--raio-captura=40</code></td><td>Raio de captura do \ytchroma, em px, usado com <code>--recuperar-tags</code>.</td></tr>
+    <tr><td><code>-h</code>, <code>--help</code></td><td>Mostra o uso.</td></tr>
+  </table></div>
+  <p>Também dá para usar como biblioteca:</p>
+  <pre><code>import { SrtDocument, YttDocument } from './src/index.js';
+const ytt = new YttDocument(SrtDocument.parse(textoSrt)).save();
+const doc = YttDocument.parse(textoYtt);</code></pre>
+
+  <h2 id="pt-youtube">Enviar ao YouTube</h2>
+  <ol>
+    <li>No YouTube Studio, abra <b>Legendas</b> e clique no vídeo.</li>
+    <li>Se precisar, clique em <b>Adicionar idioma</b>. Se já houver um rascunho na coluna Legendas, apague-o.</li>
+    <li>Clique em <b>Adicionar</b> na coluna Legendas, depois em <b>Enviar arquivo</b>, escolha <b>Com sincronização</b> e selecione o .ytt.</li>
+    <li>Clique em <b>Publicar</b>.</li>
+  </ol>
+  <p>O preview do editor do YouTube não mostra os estilos, e isso é normal: eles aparecem no player. Se você mudar qualquer coisa no editor, os estilos se perdem e é preciso enviar o arquivo de novo.</p>
+
+  <h2 id="pt-limites">Limitações</h2>
+  <h3>Do YouTube</h3>
+  <ul>
+    <li>No navegador, a legenda não aparece se o tamanho do arquivo (em bits, convertido para json3 e compactado) dividido pela duração do vídeo em segundos passar de 10240. É difícil chegar lá, mas efeitos pesados chegam.</li>
+    <li>No celular, legendas com muitos efeitos (transformações, fades, movimentos) nem aparecem como opção.</li>
+    <li>Os apps de celular ignoram o fundo: mostram sempre um retângulo preto. Para texto escuro, o conversor adiciona uma cópia clara invisível que só o Android mostra; no iOS o texto escuro fica ilegível.</li>
+    <li>No modo teatro do PC, legendas fora do centro se afastam para os lados e podem sair do vídeo.</li>
+    <li>Ruby, subscrito/sobrescrito, texto vertical e <code>\ytpack</code> só funcionam no PC. O app de Android usa sempre o mesmo tamanho de fonte.</li>
+    <li>Sombra e contorno não ficam transparentes (só com <code>&amp;H222222&amp;</code>), por isso existe a opção de fade.</li>
+  </ul>
+  <h3>Deste port</h3>
+  <ul>
+    <li>.ttml ainda não é suportado. .sbv e .json3 só são lidos.</li>
+    <li>A saída .ass não tem o modo "visual" do original (<code>VisualizingAssDocument</code>).</li>
+    <li>O preview é uma aproximação do player do YouTube.</li>
+    <li>A recuperação de tags é heurística: tempos, raios e posições saem aproximados, e efeitos misturados podem ser lidos como outra tag. Use o comparador para ver onde ficou diferente.</li>
+    <li>Na página, a correção de duplicação só vale para a saída .srt (na linha de comando, <code>--corrigir-duplicacao</code> aplica nas outras).</li>
+  </ul>
+  </article>
+
+  <article data-lang="en" lang="en" hidden>
+  <h1>Documentation</h1>
+  <p class="sub">Everything the converter does: formats, conversions, tags and styles, the page's options, the command line and the limitations.
+    It is a JavaScript port of <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a> that produces the same .ytt as the original program and runs entirely in the browser.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#en-formats">Formats and detection</a></li>
+    <li><a href="#en-conversions">Conversions</a></li>
+    <li><a href="#en-styles">.ass styles</a></li>
+    <li><a href="#en-tags">.ass tags</a></li>
+    <li><a href="#en-srt">.srt tags</a></li>
+    <li><a href="#en-options">Page options</a></li>
+    <li><a href="#en-preview">Preview, full screen and debug</a></li>
+    <li><a href="#en-recover">Recover tags and compare</a></li>
+    <li><a href="#en-cli">Command line</a></li>
+    <li><a href="#en-youtube">Uploading to YouTube</a></li>
+    <li><a href="#en-limits">Limitations</a></li>
+  </ol></nav>
+
+  <h2 id="en-formats">Formats and detection</h2>
+  <div class="table"><table>
+    <tr><th>Format</th><th>Read</th><th>Write</th><th>Notes</th></tr>
+    <tr><td><code>.ytt</code> / <code>.srv3</code></td><td>yes</td><td>yes</td><td>YouTube's styled format. When reading, the converter's tricks (padding spaces, the bright copy of dark text, etc.) are undone.</td></tr>
+    <tr><td><code>.ass</code></td><td>yes</td><td>yes</td><td>Aegisub. The output uses the <code>YT*</code> styles.</td></tr>
+    <tr><td><code>.srt</code></td><td>yes</td><td>yes</td><td>Plain text, with <code>&lt;b&gt; &lt;i&gt; &lt;u&gt; &lt;font color&gt;</code>.</td></tr>
+    <tr><td><code>.sbv</code></td><td>yes</td><td>no</td><td>What YouTube's editor downloads. The original doesn't write it either.</td></tr>
+    <tr><td><code>.json3</code></td><td>yes</td><td>no</td><td>What the YouTube player downloads (<code>/api/timedtext?…&amp;fmt=json3</code>). An extra, not in the original.</td></tr>
+    <tr><td><code>.ttml</code></td><td>no</td><td>no</td><td>Not ported yet.</td></tr>
+  </table></div>
+  <p>The format is detected <b>from the content</b>, not the extension. A json3 downloaded as <code>timedtext</code> with no extension, or a .ytt saved as <code>.txt</code>, works the same way.
+    The checks run in this order: JSON with <code>events</code> (json3), XML with <code>&lt;timedtext&gt;</code> (ytt), .ass sections with <code>Dialogue:</code> lines (ass), times with <code>--&gt;</code> (srt) and comma-separated times (sbv).
+    The extension is only used when the content isn't recognized.</p>
+
+  <h2 id="en-conversions">Conversions</h2>
+  <div class="table"><table>
+    <tr><th>Input</th><th>Output</th><th>What happens</th></tr>
+    <tr><td>.srt, .sbv, .ass</td><td>.ytt</td><td>The main conversion: colors, positions, shadows, karaoke, fades and effects become a .ytt ready for YouTube.</td></tr>
+    <tr><td>.srt, .sbv, .ass</td><td>.ass</td><td>Produces an .ass with the <code>YT*</code> styles to keep editing in Aegisub (handy for styling an .sbv downloaded from YouTube).</td></tr>
+    <tr><td>.ytt, .json3</td><td>.srt</td><td>Clean text, one line per sentence when the duplication fix is on.</td></tr>
+    <tr><td>.ytt, .json3</td><td>.ass</td><td>Each animation frame becomes a line. To rebuild the tags, use <a href="#en-recover">Recover tags</a>.</td></tr>
+    <tr><td>.json3</td><td>.ytt</td><td>Rewrites the json3 as .ytt.</td></tr>
+    <tr><td>.ytt</td><td>.ytt</td><td>The file comes out as it went in (unless the fade option is on). Useful for the preview.</td></tr>
+  </table></div>
+  <p>The downloaded file is named after the input with the new extension (<code>subtitle.json3.txt</code> becomes <code>subtitle.srt</code>). Text files are written as UTF-8 with a BOM.</p>
+
+  <h2 id="en-styles">.ass styles</h2>
+  <ul>
+    <li><b>Font.</b> YouTube only allows 7 fonts: Roboto (default), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva and Carrois Gothic SC. Any other font becomes Roboto.</li>
+    <li><b>Size.</b> The "Default" style (or the first one, if there is no "Default") always gets YouTube's standard size, and the others are relative to it: Default 15 and another style at 30 give 100% and 200%. The minimum is 75%, and the Android app ignores the size.</li>
+    <li><b>Bold, italic, underline</b> and the four colors: text, unsung karaoke, outline and shadow.</li>
+    <li><b>Alignment.</b> Besides the position, it sets which way the subtitle moves when the mouse hovers over the video: 7/8/9 move down, 4/5/6 stay put and 1/2/3 move up.</li>
+    <li><b>Outline and shadow.</b> Only whether the value is 0 or greater than 0 matters. The shadow <b>type</b> comes from the style name:
+      <code>YTPlain</code> (none), <code>YTGlow</code> (glow, same as outline), <code>YTSoftShadow</code>, <code>YTHardShadow</code> and <code>YTBevel</code>.
+      The <code>…Box</code> versions have a background. To combine several types in one style, join the names (<code>YTGlowSoftShadow</code>) or use a <code>StyleOptions.xml</code> from the original YTSubConverter.</li>
+  </ul>
+
+  <h2 id="en-tags">.ass tags</h2>
+  <p>The <a href="../exemplos/demonstracao-tags.ass">demonstracao-tags.ass</a> subtitle shows all of them, one screen per group (the <a href="../exemplos/demonstracao-tags.ytt">converted .ytt</a> can be opened in the preview).
+    Coordinates use the script resolution (<code>PlayResX</code>/<code>PlayResY</code>, for example 1280×720), colors are <code>&amp;HBBGGRR&amp;</code> and transparency goes from <code>&amp;H00&amp;</code> (opaque) to <code>&amp;HFF&amp;</code> (invisible).</p>
+
+  <h3>Text and color</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>What it does</th></tr>
+    <tr><td><code>\b</code> <code>\i</code> <code>\u</code></td><td>Bold, italic and underline (<code>\b1</code> on, <code>\b0</code> off).</td></tr>
+    <tr><td><code>\fn</code></td><td>Font, only the 7 YouTube allows.</td></tr>
+    <tr><td><code>\fs</code></td><td>Size, relative to the "Default" style (minimum 75%).</td></tr>
+    <tr><td><code>\c</code> / <code>\1c</code></td><td>Text color.</td></tr>
+    <tr><td><code>\2c</code></td><td>Color of unsung karaoke text.</td></tr>
+    <tr><td><code>\3c</code></td><td>Outline color.</td></tr>
+    <tr><td><code>\4c</code></td><td>Shadow color.</td></tr>
+    <tr><td><code>\1a</code></td><td>Text transparency.</td></tr>
+    <tr><td><code>\2a</code></td><td>Unsung karaoke transparency. Fully transparent uses YouTube's native karaoke, which hides unsung text and background even on mobile.</td></tr>
+    <tr><td><code>\3a</code></td><td>Background transparency.</td></tr>
+    <tr><td><code>\4a</code></td><td>Shadow transparency. Only works with the color <code>&amp;H222222&amp;</code> and when equal to the text's.</td></tr>
+    <tr><td><code>\alpha</code></td><td>All transparencies at once.</td></tr>
+    <tr><td><code>\r</code>, <code>\rStyle</code></td><td>Resets to the line's style or to another style.</td></tr>
+    <tr><td><code>\N</code></td><td>Line break.</td></tr>
+  </table></div>
+
+  <h3>Position, movement and animation</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>What it does</th></tr>
+    <tr><td><code>\an1</code> … <code>\an9</code></td><td>Alignment (numpad position).</td></tr>
+    <tr><td><code>\pos(x,y)</code></td><td>Position.</td></tr>
+    <tr><td><code>\move(x1,y1,x2,y2[,t1,t2])</code></td><td>Moves from one point to another, optionally only between t1 and t2 (ms).</td></tr>
+    <tr><td><code>\fad(in,out)</code></td><td>Simple fade.</td></tr>
+    <tr><td><code>\fade(a1,a2,a3,t1,t2,t3,t4)</code></td><td>Complex fade. Shadow and outline only fade along if they are <code>&amp;H222222&amp;</code>; see the <a href="#en-options">fade option</a>.</td></tr>
+    <tr><td><code>\t([t1,t2,][accel,]tags)</code></td><td>Animates colors, transparencies and size, with timing and acceleration.</td></tr>
+  </table></div>
+
+  <h3>Karaoke</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>What it does</th></tr>
+    <tr><td><code>\k</code></td><td>Syllable duration, in hundredths of a second. The syllable switches from the <code>\2c</code> color to <code>\1c</code> when sung.</td></tr>
+    <tr><td><code>\ytktFade</code></td><td>Karaoke with a gradual transition. Looks nice, but makes large files and can lag on some devices.</td></tr>
+    <tr><td><code>\ytktGlitch</code></td><td>Each syllable shows up as random characters (Latin, Chinese, Japanese or Korean) before turning into the text. Works best left-aligned with invisible unsung text.</td></tr>
+    <tr><td><code>\ytkt(Cursor,text)</code></td><td>Puts the text (for example <code>_</code>) after the word being sung.</td></tr>
+    <tr><td><code>\ytkt(Cursor,tags,text)</code></td><td>The same, with the cursor's look set by tags.</td></tr>
+    <tr><td><code>\ytkt(Cursor,interval,tags1,text1,tags2,text2,…)</code></td><td>Animated cursor: each frame lasts <code>interval</code> ms.</td></tr>
+    <tr><td><code>\ytkt(LCursor,…)</code></td><td>Like Cursor, but before (to the left of) the word being sung.</td></tr>
+  </table></div>
+
+  <h3>Effects</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>What it does</th></tr>
+    <tr><td><code>\ytshake</code></td><td>The subtitle shakes for its whole duration, within 20 px of its position.</td></tr>
+    <tr><td><code>\ytshake(radius)</code>, <code>\ytshake(rx,ry)</code></td><td>A custom radius, or one radius per axis.</td></tr>
+    <tr><td><code>\ytshake(radius,t1,t2)</code>, <code>\ytshake(rx,ry,t1,t2)</code></td><td>Shakes only between t1 and t2 (ms from the line's start).</td></tr>
+    <tr><td><code>\ytchroma</code></td><td>Chromatic aberration: red, green and blue copies come together at the start and split up at the end (20 px, 270 ms).</td></tr>
+    <tr><td><code>\ytchroma(in,out)</code></td><td>Converge and disperse times, in ms.</td></tr>
+    <tr><td><code>\ytchroma(dx,dy,in,out)</code></td><td>Offset of the first copy (the last one goes the opposite way). Can be negative.</td></tr>
+    <tr><td><code>\ytchroma(color1,color2,…,alpha,dx,dy,in,out)</code></td><td>Replaces red/green/blue with any number of colors (<code>&amp;H…&amp;</code>).</td></tr>
+  </table></div>
+
+  <h3>PC only</h3>
+  <div class="table"><table>
+    <tr><th>Tag</th><th>What it does</th></tr>
+    <tr><td><code>\ytruby</code> / <code>\ytruby8</code> / <code>\ytruby2</code></td><td>Ruby (furigana): <code>{\ytruby}これは[漢/かん][字/じ]です</code>. 8 puts the ruby above (default), 2 below. Mobile shows <code>漢(かん)</code>.</td></tr>
+    <tr><td><code>\ytsub</code>, <code>\ytsup</code>, <code>\ytsur</code></td><td>Subscript, superscript and back to normal.</td></tr>
+    <tr><td><code>\ytvert9</code></td><td>Vertical text, columns from right to left.</td></tr>
+    <tr><td><code>\ytvert7</code></td><td>Vertical text, columns from left to right.</td></tr>
+    <tr><td><code>\ytvert1</code></td><td>Subtitle rotated 90° counter-clockwise.</td></tr>
+    <tr><td><code>\ytvert3</code></td><td>Rotated 90° with the line order reversed.</td></tr>
+    <tr><td><code>\ytpack1</code> / <code>\ytpack0</code></td><td>Starts or stops packing text into the space of one full-width character (vertical text).</td></tr>
+    <tr><td><code>\ytdir4</code> / <code>\ytdir6</code></td><td>Marks the line as right-to-left (Arabic in English subtitles, for example). <code>\ytdir6</code> doesn't work in practice because of a YouTube bug.</td></tr>
+  </table></div>
+
+  <h2 id="en-srt">.srt tags</h2>
+  <p>The .srt accepts <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code> and <code>&lt;font color="#rrggbb"&gt;</code>. There is no position: the subtitle is always at the bottom center. See <a href="../exemplos/demonstracao-tags.srt">demonstracao-tags.srt</a>.</p>
+
+  <h2 id="en-options">Page options</h2>
+  <div class="table"><table>
+    <tr><th>Option</th><th>What it does</th></tr>
+    <tr><td>Convert to</td><td>.ytt (default), .ass or .srt. Applies to every file dropped after choosing.</td></tr>
+    <tr><td>During fades, remove shadow/outline below <b>45</b>% opacity</td><td>YouTube doesn't let the shadow/outline become transparent (only the color #222222), so in a fade the text disappears and the outline stays, leaving a black trail.
+      When on, once the text opacity falls below the percentage (1 to 100, default 45) the shadow/outline is removed and the text fades out cleanly (the "true fade"). When off, the result is the same as the original YTSubConverter.</td></tr>
+    <tr><td>\ytchroma capture radius</td><td>Used when <a href="#en-recover">recovering tags</a>: the distance (5 to 400 px, default 40) within which the colored \ytchroma copies are recognized and linked to the main line.</td></tr>
+    <tr><td>Fix massive duplication</td><td>Only for .srt output, on by default. A .json3/.ytt full of animation repeats the same sentence across hundreds of lines, one per frame.
+      The fix groups by on-screen position (20% grid), merges frames with the same text (or growing text) less than 200 ms apart, drops sentences shorter than 300 ms, keeps the lower one when two overlap and closes gaps of up to 500 ms.</td></tr>
+    <tr><td>Language</td><td>Portuguese, English, Spanish or French. Starts in the browser's language and is saved for later visits.</td></tr>
+  </table></div>
+  <p class="tip">Files never leave your computer: the conversion runs in the browser, with the same modules as the command line.</p>
+
+  <h2 id="en-preview">Preview, full screen and debug</h2>
+  <ul>
+    <li><b>Preview.</b> Shows up after converting, or when you drop a .ytt/.srv3. It draws the subtitles in a 16:9 area with position, font, size, colors, background, outline/shadow, karaoke, ruby and vertical text. It has Play/Pause, a timeline and a button to download the converted file.</li>
+    <li><b>Video.</b> With "Watch over a video from your computer" you pick a video and see the subtitles on top of it.</li>
+    <li><b>Full screen.</b> The "Full screen" button, the <kbd>F</kbd> key or a double-click on the video.</li>
+    <li><b>Debug table.</b> "Show debug table" lists, at the current time, each line on screen and what each segment draws, with the detected effects and the likely .ass tags. Hover a row to highlight it on the video. "Copy table" copies it as text.</li>
+  </ul>
+  <p>The preview is an approximation of the YouTube player. Tricks that depend on how YouTube draws things (for example, several shadows on the same line) may look slightly different, so check on YouTube before publishing.</p>
+
+  <h2 id="en-recover">Recover tags and compare</h2>
+  <p>Converting a .ytt to .ass gives back each animation frame as a separate line. The <b>"Try to recover the original tags (heuristic)"</b> button, shown for each .ytt/.srv3/.json3, goes the other way and tries to rebuild the source .ass:</p>
+  <ul>
+    <li>merges the copies of a line made for each shadow type into a single style (<code>YTGlowSoftShadowHardShadowBevel</code>…);</li>
+    <li>merges consecutive frames with the same text into one line, and the lines into sentences like the duplication fix;</li>
+    <li>looks at the whole line: the opacity of all letters changing together becomes <code>\fad</code>/<code>\fade</code>, a position moving in a straight line becomes <code>\move</code>, a position jumping around a point becomes <code>\ytshake</code>;</li>
+    <li>looks at each syllable: colors changing in sequence become <code>\k</code> (and <code>\ytktFade</code> if the change is gradual), native karaoke becomes <code>\k</code>, changes at different moments become one <code>\t</code> per segment;</li>
+    <li>text that changes in place: a syllable that turns into a random character on the first frame it's sung becomes <code>\ytkt(Glitch)</code>, and a short cursor moving along the line becomes <code>\ytkt(Cursor,…)</code> or <code>\ytkt(LCursor,…)</code>;</li>
+    <li>the trail of shadowless copies, each in a different color, spreading out around the text becomes <code>\ytchroma</code> (within the capture radius).</li>
+  </ul>
+  <p>It downloads <code>name.recuperado.ass</code> and, if a style has more than one shadow, a <code>StyleOptions.xml</code> for the original YTSubConverter. Timings, radii and positions are approximate, because the .ytt stores positions as whole percentages and one state every two frames.</p>
+  <p>After that, <b>"Compare original × remade"</b> converts the recovered .ass back to .ytt and shows both side by side, playing in sync. Every 100 ms, the on-screen lines from both sides are paired (by text and position) and compared by text, position, color and opacity.
+    The page shows the overall and per-property similarity, a time bar with the similarity at each point, buttons to jump between differences and, for the current instant, what differs in each line (orange outline: different line; red: line on only one side). The rebuilt .ytt can be downloaded too.</p>
+
+  <h2 id="en-cli">Command line</h2>
+  <p>Needs Node.js 18 or newer, with no dependencies.</p>
+  <pre><code>node bin/ytsubconverter.js &lt;input&gt; [output] [options]
+
+node bin/ytsubconverter.js subtitle.srt               # writes subtitle.ytt
+node bin/ytsubconverter.js subtitle.ass output.ytt
+node bin/ytsubconverter.js subtitle.ytt               # writes subtitle.srt
+node bin/ytsubconverter.js subtitle.srt output.ass    # .ass with the YT* styles
+node bin/ytsubconverter.js subtitle.json3 output.srt  # clean .srt, one line per sentence
+node bin/ytsubconverter.js subtitle.ytt --recuperar-tags</code></pre>
+  <p>With no output, .ytt/.srv3/.json3 become .srt and everything else becomes .ytt, named after the input. The input is never overwritten: if the names collide, the output is <code>name.convertido.ext</code>. The output format comes from its extension (.ytt, .srv3, .srt or .ass).</p>
+  <div class="table"><table>
+    <tr><th>Option</th><th>What it does</th></tr>
+    <tr><td><code>--fade-sombras[=45]</code></td><td>In fades, removes shadow/outline once the text opacity falls below the percentage (default 45).</td></tr>
+    <tr><td><code>--manter-duplicacao</code></td><td>Turns off the duplication fix for .srt output (which is automatic).</td></tr>
+    <tr><td><code>--corrigir-duplicacao</code></td><td>Applies the fix to .ytt/.ass output as well.</td></tr>
+    <tr><td><code>--recuperar-tags</code></td><td>.ytt/.srv3/.json3 to .ass with rebuilt tags (default output <code>name.recuperado.ass</code>). Also writes <code>name.StyleOptions.xml</code> when styles have several shadows, and prints the tags found and the similarity with the original.</td></tr>
+    <tr><td><code>--raio-captura=40</code></td><td>\ytchroma capture radius in px, used with <code>--recuperar-tags</code>.</td></tr>
+    <tr><td><code>-h</code>, <code>--help</code></td><td>Shows the usage.</td></tr>
+  </table></div>
+  <p>It can also be used as a library:</p>
+  <pre><code>import { SrtDocument, YttDocument } from './src/index.js';
+const ytt = new YttDocument(SrtDocument.parse(srtText)).save();
+const doc = YttDocument.parse(yttText);</code></pre>
+
+  <h2 id="en-youtube">Uploading to YouTube</h2>
+  <ol>
+    <li>In YouTube Studio, open <b>Subtitles</b> and click the video.</li>
+    <li>If needed, click <b>Add language</b>. If the Subtitles column already has a draft, delete it.</li>
+    <li>Click <b>Add</b> in the Subtitles column, then <b>Upload file</b>, choose <b>With timing</b> and select the .ytt.</li>
+    <li>Click <b>Publish</b>.</li>
+  </ol>
+  <p>The YouTube editor's preview doesn't show the styles, and that's normal: they show up in the player. If you change anything in the editor, the styles are lost and you'll need to upload the file again.</p>
+
+  <h2 id="en-limits">Limitations</h2>
+  <h3>YouTube's</h3>
+  <ul>
+    <li>In browsers, the subtitles don't show if the file size (in bits, converted to json3 and compressed) divided by the video length in seconds exceeds 10240. It's hard to reach, but heavy effects can.</li>
+    <li>On mobile, subtitles with many effects (transforms, fades, movement) aren't even offered as an option.</li>
+    <li>The mobile apps ignore the background and always show a black box. For dark text, the converter adds an invisible bright copy that only Android shows; on iOS dark text stays unreadable.</li>
+    <li>In PC theater mode, off-center subtitles move out to the sides and may leave the video.</li>
+    <li>Ruby, subscript/superscript, vertical text and <code>\ytpack</code> only work on PC. The Android app always uses the same font size.</li>
+    <li>Shadow and outline can't be transparent (except <code>&amp;H222222&amp;</code>), which is why the fade option exists.</li>
+  </ul>
+  <h3>This port's</h3>
+  <ul>
+    <li>.ttml isn't supported yet. .sbv and .json3 are read only.</li>
+    <li>The .ass output doesn't have the original's "visual" mode (<code>VisualizingAssDocument</code>).</li>
+    <li>The preview is an approximation of the YouTube player.</li>
+    <li>Tag recovery is heuristic: timings, radii and positions are approximate, and mixed effects may be read as another tag. Use the comparison to see where it differs.</li>
+    <li>On the page, the duplication fix only applies to .srt output (on the command line, <code>--corrigir-duplicacao</code> applies it to the others).</li>
+  </ul>
+  </article>
+
+  <article data-lang="es" lang="es" hidden>
+  <h1>Documentación</h1>
+  <p class="sub">Todo lo que hace el conversor: formatos, conversiones, etiquetas y estilos, las opciones de la página, la línea de comandos y las limitaciones.
+    Es un port a JavaScript de <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a> que genera el mismo .ytt que el programa original y funciona entero en el navegador.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#es-formatos">Formatos y detección</a></li>
+    <li><a href="#es-conversiones">Conversiones</a></li>
+    <li><a href="#es-estilos">Estilos del .ass</a></li>
+    <li><a href="#es-etiquetas">Etiquetas del .ass</a></li>
+    <li><a href="#es-srt">Etiquetas del .srt</a></li>
+    <li><a href="#es-opciones">Opciones de la página</a></li>
+    <li><a href="#es-preview">Vista previa, pantalla completa y depuración</a></li>
+    <li><a href="#es-recuperar">Recuperar etiquetas y comparar</a></li>
+    <li><a href="#es-cli">Línea de comandos</a></li>
+    <li><a href="#es-youtube">Subir a YouTube</a></li>
+    <li><a href="#es-limites">Limitaciones</a></li>
+  </ol></nav>
+
+  <h2 id="es-formatos">Formatos y detección</h2>
+  <div class="table"><table>
+    <tr><th>Formato</th><th>Lee</th><th>Escribe</th><th>Observación</th></tr>
+    <tr><td><code>.ytt</code> / <code>.srv3</code></td><td>sí</td><td>sí</td><td>El formato con estilos de YouTube. Al leerlo se deshacen los trucos del conversor (espacios de relleno, la copia clara del texto oscuro, etc.).</td></tr>
+    <tr><td><code>.ass</code></td><td>sí</td><td>sí</td><td>Aegisub. La salida usa los estilos <code>YT*</code>.</td></tr>
+    <tr><td><code>.srt</code></td><td>sí</td><td>sí</td><td>Texto simple, con <code>&lt;b&gt; &lt;i&gt; &lt;u&gt; &lt;font color&gt;</code>.</td></tr>
+    <tr><td><code>.sbv</code></td><td>sí</td><td>no</td><td>Lo que descarga el editor de YouTube. El original tampoco lo escribe.</td></tr>
+    <tr><td><code>.json3</code></td><td>sí</td><td>no</td><td>Lo que descarga el reproductor de YouTube (<code>/api/timedtext?…&amp;fmt=json3</code>). Extra, no está en el original.</td></tr>
+    <tr><td><code>.ttml</code></td><td>no</td><td>no</td><td>Todavía no portado.</td></tr>
+  </table></div>
+  <p>El formato se reconoce <b>por el contenido</b>, no por la extensión. Un json3 descargado como <code>timedtext</code> sin extensión, o un .ytt guardado como <code>.txt</code>, funcionan igual.
+    El orden de prueba es: JSON con <code>events</code> (json3), XML con <code>&lt;timedtext&gt;</code> (ytt), secciones del .ass con líneas <code>Dialogue:</code> (ass), tiempos con <code>--&gt;</code> (srt) y tiempos separados por coma (sbv).
+    La extensión solo se usa cuando el contenido no se reconoce.</p>
+
+  <h2 id="es-conversiones">Conversiones</h2>
+  <div class="table"><table>
+    <tr><th>Entrada</th><th>Salida</th><th>Qué pasa</th></tr>
+    <tr><td>.srt, .sbv, .ass</td><td>.ytt</td><td>La conversión principal: colores, posiciones, sombras, karaoke, fundidos y efectos se convierten en el .ytt listo para YouTube.</td></tr>
+    <tr><td>.srt, .sbv, .ass</td><td>.ass</td><td>Genera un .ass con los estilos <code>YT*</code> para seguir editando en Aegisub (útil para dar estilo a un .sbv descargado de YouTube).</td></tr>
+    <tr><td>.ytt, .json3</td><td>.srt</td><td>Texto limpio, una línea por frase cuando la corrección de duplicación está activada.</td></tr>
+    <tr><td>.ytt, .json3</td><td>.ass</td><td>Cada cuadro de animación se convierte en una línea. Para reconstruir las etiquetas, usa <a href="#es-recuperar">Recuperar etiquetas</a>.</td></tr>
+    <tr><td>.json3</td><td>.ytt</td><td>Reescribe el json3 como .ytt.</td></tr>
+    <tr><td>.ytt</td><td>.ytt</td><td>El archivo sale como entró (salvo que la opción de fundido esté activada). Sirve para ver la vista previa.</td></tr>
+  </table></div>
+  <p>El archivo descargado se llama como la entrada con la nueva extensión (<code>subtitulo.json3.txt</code> pasa a <code>subtitulo.srt</code>). Los archivos de texto se guardan en UTF-8 con BOM.</p>
+
+  <h2 id="es-estilos">Estilos del .ass</h2>
+  <ul>
+    <li><b>Fuente.</b> YouTube solo acepta 7 fuentes: Roboto (predeterminada), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva y Carrois Gothic SC. Cualquier otra pasa a Roboto.</li>
+    <li><b>Tamaño.</b> El estilo "Default" (o el primero, si no hay "Default") siempre tiene el tamaño estándar de YouTube y los demás son relativos a él: Default 15 y otro estilo 30 dan 100% y 200%. El mínimo es 75%, y la app de Android ignora el tamaño.</li>
+    <li><b>Negrita, cursiva, subrayado</b> y los cuatro colores: texto, karaoke no cantado, contorno y sombra.</li>
+    <li><b>Alineación.</b> Además de la posición, define hacia dónde se mueve el subtítulo cuando el ratón pasa sobre el video: 7/8/9 bajan, 4/5/6 se quedan y 1/2/3 suben.</li>
+    <li><b>Contorno y sombra.</b> Solo importa si el valor es 0 o mayor que 0. El <b>tipo</b> de sombra viene del nombre del estilo:
+      <code>YTPlain</code> (ninguna), <code>YTGlow</code> (brillo, igual al contorno), <code>YTSoftShadow</code> (sombra suave), <code>YTHardShadow</code> (sombra dura) y <code>YTBevel</code> (relieve).
+      Las versiones <code>…Box</code> tienen fondo. Para combinar varios tipos en el mismo estilo, junta los nombres (<code>YTGlowSoftShadow</code>) o usa un <code>StyleOptions.xml</code> del YTSubConverter original.</li>
+  </ul>
+
+  <h2 id="es-etiquetas">Etiquetas del .ass</h2>
+  <p>El subtítulo <a href="../exemplos/demonstracao-tags.ass">demonstracao-tags.ass</a> las muestra todas, una pantalla por grupo (el <a href="../exemplos/demonstracao-tags.ytt">.ytt convertido</a> se puede abrir en la vista previa).
+    Las coordenadas usan la resolución del script (<code>PlayResX</code>/<code>PlayResY</code>, por ejemplo 1280×720), los colores son <code>&amp;HBBGGRR&amp;</code> y la transparencia va de <code>&amp;H00&amp;</code> (opaco) a <code>&amp;HFF&amp;</code> (invisible).</p>
+
+  <h3>Texto y color</h3>
+  <div class="table"><table>
+    <tr><th>Etiqueta</th><th>Qué hace</th></tr>
+    <tr><td><code>\b</code> <code>\i</code> <code>\u</code></td><td>Negrita, cursiva y subrayado (<code>\b1</code> activa, <code>\b0</code> desactiva).</td></tr>
+    <tr><td><code>\fn</code></td><td>Fuente, solo las 7 que acepta YouTube.</td></tr>
+    <tr><td><code>\fs</code></td><td>Tamaño, relativo al estilo "Default" (mínimo 75%).</td></tr>
+    <tr><td><code>\c</code> / <code>\1c</code></td><td>Color del texto.</td></tr>
+    <tr><td><code>\2c</code></td><td>Color del karaoke todavía no cantado.</td></tr>
+    <tr><td><code>\3c</code></td><td>Color del contorno.</td></tr>
+    <tr><td><code>\4c</code></td><td>Color de la sombra.</td></tr>
+    <tr><td><code>\1a</code></td><td>Transparencia del texto.</td></tr>
+    <tr><td><code>\2a</code></td><td>Transparencia del karaoke no cantado. Totalmente transparente usa el karaoke nativo de YouTube, que oculta el texto y el fondo no cantados incluso en el móvil.</td></tr>
+    <tr><td><code>\3a</code></td><td>Transparencia del fondo.</td></tr>
+    <tr><td><code>\4a</code></td><td>Transparencia de la sombra. Solo funciona con el color <code>&amp;H222222&amp;</code> e igual a la del texto.</td></tr>
+    <tr><td><code>\alpha</code></td><td>Todas las transparencias a la vez.</td></tr>
+    <tr><td><code>\r</code>, <code>\rEstilo</code></td><td>Vuelve al estilo de la línea o a otro estilo.</td></tr>
+    <tr><td><code>\N</code></td><td>Salto de línea.</td></tr>
+  </table></div>
+
+  <h3>Posición, movimiento y animación</h3>
+  <div class="table"><table>
+    <tr><th>Etiqueta</th><th>Qué hace</th></tr>
+    <tr><td><code>\an1</code> … <code>\an9</code></td><td>Alineación (posición en el teclado numérico).</td></tr>
+    <tr><td><code>\pos(x,y)</code></td><td>Posición.</td></tr>
+    <tr><td><code>\move(x1,y1,x2,y2[,t1,t2])</code></td><td>Mueve de un punto a otro, opcionalmente solo entre t1 y t2 (ms).</td></tr>
+    <tr><td><code>\fad(entrada,salida)</code></td><td>Fundido simple.</td></tr>
+    <tr><td><code>\fade(a1,a2,a3,t1,t2,t3,t4)</code></td><td>Fundido completo. Sombra y contorno solo acompañan el fundido si son <code>&amp;H222222&amp;</code>; mira la <a href="#es-opciones">opción de fundido</a>.</td></tr>
+    <tr><td><code>\t([t1,t2,][acel,]etiquetas)</code></td><td>Anima colores, transparencias y tamaño, con tiempo y aceleración.</td></tr>
+  </table></div>
+
+  <h3>Karaoke</h3>
+  <div class="table"><table>
+    <tr><th>Etiqueta</th><th>Qué hace</th></tr>
+    <tr><td><code>\k</code></td><td>Duración de la sílaba, en centésimas de segundo. La sílaba pasa del color <code>\2c</code> a <code>\1c</code> cuando se canta.</td></tr>
+    <tr><td><code>\ytktFade</code></td><td>Karaoke con transición gradual. Queda bonito, pero genera archivos grandes y puede trabar algunos dispositivos.</td></tr>
+    <tr><td><code>\ytktGlitch</code></td><td>Cada sílaba aparece como caracteres aleatorios (latinos, chinos, japoneses o coreanos) antes de convertirse en el texto. Funciona mejor alineado a la izquierda y con lo no cantado invisible.</td></tr>
+    <tr><td><code>\ytkt(Cursor,texto)</code></td><td>Pone el texto (por ejemplo <code>_</code>) después de la palabra que se está cantando.</td></tr>
+    <tr><td><code>\ytkt(Cursor,etiquetas,texto)</code></td><td>Igual, con el aspecto del cursor definido por etiquetas.</td></tr>
+    <tr><td><code>\ytkt(Cursor,intervalo,etiquetas1,texto1,etiquetas2,texto2,…)</code></td><td>Cursor animado: cada cuadro dura <code>intervalo</code> ms.</td></tr>
+    <tr><td><code>\ytkt(LCursor,…)</code></td><td>Como Cursor, pero antes (a la izquierda) de la palabra cantada.</td></tr>
+  </table></div>
+
+  <h3>Efectos</h3>
+  <div class="table"><table>
+    <tr><th>Etiqueta</th><th>Qué hace</th></tr>
+    <tr><td><code>\ytshake</code></td><td>El subtítulo tiembla durante toda su duración, hasta 20 px de su posición.</td></tr>
+    <tr><td><code>\ytshake(radio)</code>, <code>\ytshake(rx,ry)</code></td><td>Radio propio, o un radio por eje.</td></tr>
+    <tr><td><code>\ytshake(radio,t1,t2)</code>, <code>\ytshake(rx,ry,t1,t2)</code></td><td>Tiembla solo entre t1 y t2 (ms desde el inicio de la línea).</td></tr>
+    <tr><td><code>\ytchroma</code></td><td>Aberración cromática: copias roja, verde y azul se juntan al principio y se separan al final (20 px, 270 ms).</td></tr>
+    <tr><td><code>\ytchroma(entrada,salida)</code></td><td>Tiempo de unión y de separación, en ms.</td></tr>
+    <tr><td><code>\ytchroma(dx,dy,entrada,salida)</code></td><td>Distancia de la primera copia (la última queda en el lado opuesto). Puede ser negativa.</td></tr>
+    <tr><td><code>\ytchroma(color1,color2,…,alpha,dx,dy,entrada,salida)</code></td><td>Cambia rojo/verde/azul por cualquier número de colores (<code>&amp;H…&amp;</code>).</td></tr>
+  </table></div>
+
+  <h3>Solo en PC</h3>
+  <div class="table"><table>
+    <tr><th>Etiqueta</th><th>Qué hace</th></tr>
+    <tr><td><code>\ytruby</code> / <code>\ytruby8</code> / <code>\ytruby2</code></td><td>Ruby (furigana): <code>{\ytruby}これは[漢/かん][字/じ]です</code>. 8 pone el ruby arriba (predeterminado), 2 abajo. En el móvil aparece <code>漢(かん)</code>.</td></tr>
+    <tr><td><code>\ytsub</code>, <code>\ytsup</code>, <code>\ytsur</code></td><td>Subíndice, superíndice y vuelta a lo normal.</td></tr>
+    <tr><td><code>\ytvert9</code></td><td>Texto vertical, columnas de derecha a izquierda.</td></tr>
+    <tr><td><code>\ytvert7</code></td><td>Texto vertical, columnas de izquierda a derecha.</td></tr>
+    <tr><td><code>\ytvert1</code></td><td>Subtítulo girado 90° en sentido antihorario.</td></tr>
+    <tr><td><code>\ytvert3</code></td><td>Girado 90° con el orden de las líneas invertido.</td></tr>
+    <tr><td><code>\ytpack1</code> / <code>\ytpack0</code></td><td>Activa o desactiva el empaquetado del texto en el espacio de un carácter ancho (texto vertical).</td></tr>
+    <tr><td><code>\ytdir4</code> / <code>\ytdir6</code></td><td>Marca la línea como de derecha a izquierda (árabe en un subtítulo en inglés, por ejemplo). <code>\ytdir6</code> no funciona en la práctica por un error de YouTube.</td></tr>
+  </table></div>
+
+  <h2 id="es-srt">Etiquetas del .srt</h2>
+  <p>El .srt acepta <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code> y <code>&lt;font color="#rrggbb"&gt;</code>. No hay posición: el subtítulo queda siempre abajo, en el centro. Mira <a href="../exemplos/demonstracao-tags.srt">demonstracao-tags.srt</a>.</p>
+
+  <h2 id="es-opciones">Opciones de la página</h2>
+  <div class="table"><table>
+    <tr><th>Opción</th><th>Qué hace</th></tr>
+    <tr><td>Convertir a</td><td>.ytt (predeterminado), .ass o .srt. Vale para todos los archivos que sueltes después de elegir.</td></tr>
+    <tr><td>En los fundidos, quitar sombra/contorno por debajo del <b>45</b>% de opacidad</td><td>YouTube no deja que la sombra/contorno sea transparente (solo el color #222222), así que en un fundido el texto desaparece y el contorno queda, dejando un rastro negro.
+      Activada, cuando la opacidad del texto baja de ese porcentaje (1 a 100, predeterminado 45) se quita la sombra/contorno y el texto desaparece solo (el "true fade"). Desactivada, el resultado es igual al YTSubConverter original.</td></tr>
+    <tr><td>Radio de captura del \ytchroma</td><td>Se usa al <a href="#es-recuperar">recuperar etiquetas</a>: distancia (5 a 400 px, predeterminado 40) dentro de la cual las copias de color del \ytchroma se reconocen y se unen a la línea principal.</td></tr>
+    <tr><td>Corregir duplicación masiva</td><td>Solo en la salida .srt, activada por defecto. Un .json3/.ytt lleno de animación repite la misma frase en cientos de líneas, una por cuadro.
+      La corrección agrupa por posición en pantalla (cuadrícula del 20%), une cuadros con el mismo texto (o texto que crece) separados por menos de 200 ms, descarta frases de menos de 300 ms, se queda con la de abajo cuando dos se solapan y cierra huecos de hasta 500 ms.</td></tr>
+    <tr><td>Idioma</td><td>Portugués, inglés, español o francés. Empieza en el idioma del navegador y queda guardado para las próximas visitas.</td></tr>
+  </table></div>
+  <p class="tip">Los archivos nunca salen de tu computadora: la conversión se hace en el navegador, con los mismos módulos que la línea de comandos.</p>
+
+  <h2 id="es-preview">Vista previa, pantalla completa y depuración</h2>
+  <ul>
+    <li><b>Vista previa.</b> Aparece después de convertir, o al soltar un .ytt/.srv3. Dibuja el subtítulo en un área 16:9 con posición, fuente, tamaño, colores, fondo, contorno/sombra, karaoke, ruby y texto vertical. Tiene Reproducir/Pausa, línea de tiempo y el botón para descargar el archivo convertido.</li>
+    <li><b>Video.</b> En "Ver sobre un video de tu computadora" eliges un video y ves el subtítulo encima.</li>
+    <li><b>Pantalla completa.</b> El botón "Pantalla completa", la tecla <kbd>F</kbd> o doble clic en el video.</li>
+    <li><b>Tabla de depuración.</b> "Mostrar tabla de depuración" lista, en el tiempo actual, cada línea en pantalla y lo que dibuja cada fragmento, con los efectos detectados y las etiquetas .ass probables. Pasa el ratón por una fila para resaltarla en el video. "Copiar tabla" la copia como texto.</li>
+  </ul>
+  <p>La vista previa es una aproximación del reproductor de YouTube. Los trucos que dependen de cómo dibuja YouTube (por ejemplo, varias sombras en la misma línea) pueden verse un poco distintos, así que revisa en YouTube antes de publicar.</p>
+
+  <h2 id="es-recuperar">Recuperar etiquetas y comparar</h2>
+  <p>Convertir un .ytt a .ass devuelve cada cuadro de animación como una línea separada. El botón <b>"Intentar recuperar las etiquetas originales (heurística)"</b>, que aparece para cada .ytt/.srv3/.json3, hace el camino inverso e intenta reconstruir el .ass de origen:</p>
+  <ul>
+    <li>une las copias de una línea hechas para cada tipo de sombra en un único estilo (<code>YTGlowSoftShadowHardShadowBevel</code>…);</li>
+    <li>une cuadros seguidos con el mismo texto en una línea, y las líneas en frases como la corrección de duplicación;</li>
+    <li>mira la línea entera: la opacidad de todas las letras cambiando a la vez se vuelve <code>\fad</code>/<code>\fade</code>, una posición que avanza en línea recta se vuelve <code>\move</code>, una posición que salta alrededor de un punto se vuelve <code>\ytshake</code>;</li>
+    <li>mira cada sílaba: colores que cambian en secuencia se vuelven <code>\k</code> (y <code>\ytktFade</code> si el cambio es gradual), el karaoke nativo se vuelve <code>\k</code>, cambios en momentos distintos se vuelven un <code>\t</code> por fragmento;</li>
+    <li>texto que cambia en el mismo lugar: una sílaba que se convierte en un carácter aleatorio en el primer cuadro en que se canta se vuelve <code>\ytkt(Glitch)</code>, y un cursor corto que avanza por la línea se vuelve <code>\ytkt(Cursor,…)</code> o <code>\ytkt(LCursor,…)</code>;</li>
+    <li>el rastro de copias sin sombra, cada una de un color, que se dispersan alrededor del texto se vuelve <code>\ytchroma</code> (dentro del radio de captura).</li>
+  </ul>
+  <p>Descarga <code>nombre.recuperado.ass</code> y, si algún estilo tiene más de una sombra, un <code>StyleOptions.xml</code> para el YTSubConverter original. Tiempos, radios y posiciones son aproximados, porque el .ytt guarda posiciones en porcentajes enteros y un estado cada dos cuadros.</p>
+  <p>Después, <b>"Comparar original × rehecho"</b> convierte el .ass recuperado de nuevo a .ytt y muestra los dos lado a lado, reproduciéndose juntos. Cada 100 ms las líneas en pantalla de los dos lados se emparejan (por texto y posición) y se comparan por texto, posición, color y opacidad.
+    La página muestra la similitud general y por propiedad, una barra de tiempo con la similitud en cada punto, botones para saltar entre diferencias y, en el instante actual, qué difiere en cada línea (contorno naranja: línea distinta; rojo: línea que solo existe de un lado). El .ytt rehecho también se puede descargar.</p>
+
+  <h2 id="es-cli">Línea de comandos</h2>
+  <p>Necesita Node.js 18 o más reciente, sin dependencias.</p>
+  <pre><code>node bin/ytsubconverter.js &lt;entrada&gt; [salida] [opciones]
+
+node bin/ytsubconverter.js subtitulo.srt               # genera subtitulo.ytt
+node bin/ytsubconverter.js subtitulo.ass salida.ytt
+node bin/ytsubconverter.js subtitulo.ytt               # genera subtitulo.srt
+node bin/ytsubconverter.js subtitulo.srt salida.ass    # .ass con los estilos YT*
+node bin/ytsubconverter.js subtitulo.json3 salida.srt  # .srt limpio, una línea por frase
+node bin/ytsubconverter.js subtitulo.ytt --recuperar-tags</code></pre>
+  <p>Sin salida, .ytt/.srv3/.json3 pasan a .srt y el resto a .ytt, con el nombre de la entrada. La entrada nunca se sobrescribe: si los nombres coinciden, la salida queda <code>nombre.convertido.ext</code>. El formato de salida viene de su extensión (.ytt, .srv3, .srt o .ass).</p>
+  <div class="table"><table>
+    <tr><th>Opción</th><th>Qué hace</th></tr>
+    <tr><td><code>--fade-sombras[=45]</code></td><td>En los fundidos, quita sombra/contorno cuando la opacidad del texto baja del porcentaje (predeterminado 45).</td></tr>
+    <tr><td><code>--manter-duplicacao</code></td><td>Desactiva la corrección de duplicación en la salida .srt (que es automática).</td></tr>
+    <tr><td><code>--corrigir-duplicacao</code></td><td>Aplica la corrección también en la salida .ytt/.ass.</td></tr>
+    <tr><td><code>--recuperar-tags</code></td><td>.ytt/.srv3/.json3 a .ass con las etiquetas reconstruidas (salida predeterminada <code>nombre.recuperado.ass</code>). También guarda <code>nombre.StyleOptions.xml</code> cuando hay estilos con varias sombras y muestra las etiquetas encontradas y la similitud con el original.</td></tr>
+    <tr><td><code>--raio-captura=40</code></td><td>Radio de captura del \ytchroma, en px, usado con <code>--recuperar-tags</code>.</td></tr>
+    <tr><td><code>-h</code>, <code>--help</code></td><td>Muestra el uso.</td></tr>
+  </table></div>
+  <p>También se puede usar como biblioteca:</p>
+  <pre><code>import { SrtDocument, YttDocument } from './src/index.js';
+const ytt = new YttDocument(SrtDocument.parse(textoSrt)).save();
+const doc = YttDocument.parse(textoYtt);</code></pre>
+
+  <h2 id="es-youtube">Subir a YouTube</h2>
+  <ol>
+    <li>En YouTube Studio, abre <b>Subtítulos</b> y haz clic en el video.</li>
+    <li>Si hace falta, haz clic en <b>Añadir idioma</b>. Si ya hay un borrador en la columna Subtítulos, bórralo.</li>
+    <li>Haz clic en <b>Añadir</b> en la columna Subtítulos, luego en <b>Subir archivo</b>, elige <b>Con sincronización</b> y selecciona el .ytt.</li>
+    <li>Haz clic en <b>Publicar</b>.</li>
+  </ol>
+  <p>La vista previa del editor de YouTube no muestra los estilos, y es normal: aparecen en el reproductor. Si cambias cualquier cosa en el editor, los estilos se pierden y hay que volver a subir el archivo.</p>
+
+  <h2 id="es-limites">Limitaciones</h2>
+  <h3>De YouTube</h3>
+  <ul>
+    <li>En el navegador, el subtítulo no aparece si el tamaño del archivo (en bits, convertido a json3 y comprimido) dividido por la duración del video en segundos pasa de 10240. Es difícil llegar, pero los efectos pesados lo consiguen.</li>
+    <li>En el móvil, los subtítulos con muchos efectos (transformaciones, fundidos, movimientos) ni siquiera aparecen como opción.</li>
+    <li>Las apps móviles ignoran el fondo: siempre muestran un rectángulo negro. Para el texto oscuro, el conversor agrega una copia clara invisible que solo muestra Android; en iOS el texto oscuro queda ilegible.</li>
+    <li>En el modo cine del PC, los subtítulos fuera del centro se alejan hacia los lados y pueden salirse del video.</li>
+    <li>Ruby, subíndice/superíndice, texto vertical y <code>\ytpack</code> solo funcionan en PC. La app de Android usa siempre el mismo tamaño de fuente.</li>
+    <li>Sombra y contorno no pueden ser transparentes (salvo <code>&amp;H222222&amp;</code>), por eso existe la opción de fundido.</li>
+  </ul>
+  <h3>De este port</h3>
+  <ul>
+    <li>.ttml todavía no es compatible. .sbv y .json3 solo se leen.</li>
+    <li>La salida .ass no tiene el modo "visual" del original (<code>VisualizingAssDocument</code>).</li>
+    <li>La vista previa es una aproximación del reproductor de YouTube.</li>
+    <li>La recuperación de etiquetas es heurística: tiempos, radios y posiciones son aproximados, y efectos mezclados pueden leerse como otra etiqueta. Usa el comparador para ver dónde difiere.</li>
+    <li>En la página, la corrección de duplicación solo vale para la salida .srt (en la línea de comandos, <code>--corrigir-duplicacao</code> la aplica a las demás).</li>
+  </ul>
+  </article>
+
+  <article data-lang="fr" lang="fr" hidden>
+  <h1>Documentation</h1>
+  <p class="sub">Tout ce que fait le convertisseur : formats, conversions, balises et styles, les options de la page, la ligne de commande et les limites.
+    C'est un portage en JavaScript de <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a> qui produit le même .ytt que le programme d'origine et fonctionne entièrement dans le navigateur.</p>
+
+  <nav class="toc"><ol>
+    <li><a href="#fr-formats">Formats et détection</a></li>
+    <li><a href="#fr-conversions">Conversions</a></li>
+    <li><a href="#fr-styles">Styles du .ass</a></li>
+    <li><a href="#fr-balises">Balises du .ass</a></li>
+    <li><a href="#fr-srt">Balises du .srt</a></li>
+    <li><a href="#fr-options">Options de la page</a></li>
+    <li><a href="#fr-apercu">Aperçu, plein écran et débogage</a></li>
+    <li><a href="#fr-recuperer">Récupérer les balises et comparer</a></li>
+    <li><a href="#fr-cli">Ligne de commande</a></li>
+    <li><a href="#fr-youtube">Envoyer sur YouTube</a></li>
+    <li><a href="#fr-limites">Limites</a></li>
+  </ol></nav>
+
+  <h2 id="fr-formats">Formats et détection</h2>
+  <div class="table"><table>
+    <tr><th>Format</th><th>Lecture</th><th>Écriture</th><th>Remarque</th></tr>
+    <tr><td><code>.ytt</code> / <code>.srv3</code></td><td>oui</td><td>oui</td><td>Le format stylé de YouTube. À la lecture, les astuces du convertisseur (espaces de remplissage, copie claire du texte sombre, etc.) sont défaites.</td></tr>
+    <tr><td><code>.ass</code></td><td>oui</td><td>oui</td><td>Aegisub. La sortie utilise les styles <code>YT*</code>.</td></tr>
+    <tr><td><code>.srt</code></td><td>oui</td><td>oui</td><td>Texte simple, avec <code>&lt;b&gt; &lt;i&gt; &lt;u&gt; &lt;font color&gt;</code>.</td></tr>
+    <tr><td><code>.sbv</code></td><td>oui</td><td>non</td><td>Ce que télécharge l'éditeur de YouTube. L'original ne l'écrit pas non plus.</td></tr>
+    <tr><td><code>.json3</code></td><td>oui</td><td>non</td><td>Ce que télécharge le lecteur YouTube (<code>/api/timedtext?…&amp;fmt=json3</code>). En plus, absent de l'original.</td></tr>
+    <tr><td><code>.ttml</code></td><td>non</td><td>non</td><td>Pas encore porté.</td></tr>
+  </table></div>
+  <p>Le format est reconnu <b>par le contenu</b>, pas par l'extension. Un json3 téléchargé comme <code>timedtext</code> sans extension, ou un .ytt enregistré en <code>.txt</code>, fonctionnent pareil.
+    L'ordre des tests : JSON avec <code>events</code> (json3), XML avec <code>&lt;timedtext&gt;</code> (ytt), sections .ass avec des lignes <code>Dialogue:</code> (ass), temps avec <code>--&gt;</code> (srt) et temps séparés par une virgule (sbv).
+    L'extension ne sert que si le contenu n'est pas reconnu.</p>
+
+  <h2 id="fr-conversions">Conversions</h2>
+  <div class="table"><table>
+    <tr><th>Entrée</th><th>Sortie</th><th>Ce qui se passe</th></tr>
+    <tr><td>.srt, .sbv, .ass</td><td>.ytt</td><td>La conversion principale : couleurs, positions, ombres, karaoké, fondus et effets deviennent un .ytt prêt pour YouTube.</td></tr>
+    <tr><td>.srt, .sbv, .ass</td><td>.ass</td><td>Produit un .ass avec les styles <code>YT*</code> pour continuer dans Aegisub (pratique pour styliser un .sbv téléchargé de YouTube).</td></tr>
+    <tr><td>.ytt, .json3</td><td>.srt</td><td>Texte propre, une ligne par phrase quand la correction de duplication est activée.</td></tr>
+    <tr><td>.ytt, .json3</td><td>.ass</td><td>Chaque image d'animation devient une ligne. Pour reconstruire les balises, utilisez <a href="#fr-recuperer">Récupérer les balises</a>.</td></tr>
+    <tr><td>.json3</td><td>.ytt</td><td>Réécrit le json3 en .ytt.</td></tr>
+    <tr><td>.ytt</td><td>.ytt</td><td>Le fichier ressort tel quel (sauf si l'option de fondu est activée). Utile pour l'aperçu.</td></tr>
+  </table></div>
+  <p>Le fichier téléchargé porte le nom de l'entrée avec la nouvelle extension (<code>soustitre.json3.txt</code> devient <code>soustitre.srt</code>). Les fichiers texte sont écrits en UTF-8 avec BOM.</p>
+
+  <h2 id="fr-styles">Styles du .ass</h2>
+  <ul>
+    <li><b>Police.</b> YouTube n'accepte que 7 polices : Roboto (par défaut), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva et Carrois Gothic SC. Toute autre police devient Roboto.</li>
+    <li><b>Taille.</b> Le style « Default » (ou le premier, s'il n'y a pas de « Default ») a toujours la taille standard de YouTube et les autres sont relatifs à lui : Default 15 et un autre style à 30 donnent 100 % et 200 %. Le minimum est 75 %, et l'application Android ignore la taille.</li>
+    <li><b>Gras, italique, souligné</b> et les quatre couleurs : texte, karaoké non chanté, contour et ombre.</li>
+    <li><b>Alignement.</b> En plus de la position, il définit dans quel sens le sous-titre bouge quand la souris survole la vidéo : 7/8/9 descendent, 4/5/6 restent et 1/2/3 montent.</li>
+    <li><b>Contour et ombre.</b> Seul compte le fait que la valeur soit 0 ou supérieure à 0. Le <b>type</b> d'ombre vient du nom du style :
+      <code>YTPlain</code> (aucune), <code>YTGlow</code> (lueur, comme le contour), <code>YTSoftShadow</code> (ombre douce), <code>YTHardShadow</code> (ombre dure) et <code>YTBevel</code> (relief).
+      Les versions <code>…Box</code> ont un fond. Pour combiner plusieurs types dans un style, accolez les noms (<code>YTGlowSoftShadow</code>) ou utilisez un <code>StyleOptions.xml</code> du YTSubConverter d'origine.</li>
+  </ul>
+
+  <h2 id="fr-balises">Balises du .ass</h2>
+  <p>Le sous-titre <a href="../exemplos/demonstracao-tags.ass">demonstracao-tags.ass</a> les montre toutes, un écran par groupe (le <a href="../exemplos/demonstracao-tags.ytt">.ytt converti</a> peut s'ouvrir dans l'aperçu).
+    Les coordonnées utilisent la résolution du script (<code>PlayResX</code>/<code>PlayResY</code>, par exemple 1280×720), les couleurs sont en <code>&amp;HBBGGRR&amp;</code> et la transparence va de <code>&amp;H00&amp;</code> (opaque) à <code>&amp;HFF&amp;</code> (invisible).</p>
+
+  <h3>Texte et couleur</h3>
+  <div class="table"><table>
+    <tr><th>Balise</th><th>Effet</th></tr>
+    <tr><td><code>\b</code> <code>\i</code> <code>\u</code></td><td>Gras, italique et souligné (<code>\b1</code> active, <code>\b0</code> désactive).</td></tr>
+    <tr><td><code>\fn</code></td><td>Police, seulement les 7 acceptées par YouTube.</td></tr>
+    <tr><td><code>\fs</code></td><td>Taille, relative au style « Default » (minimum 75 %).</td></tr>
+    <tr><td><code>\c</code> / <code>\1c</code></td><td>Couleur du texte.</td></tr>
+    <tr><td><code>\2c</code></td><td>Couleur du karaoké pas encore chanté.</td></tr>
+    <tr><td><code>\3c</code></td><td>Couleur du contour.</td></tr>
+    <tr><td><code>\4c</code></td><td>Couleur de l'ombre.</td></tr>
+    <tr><td><code>\1a</code></td><td>Transparence du texte.</td></tr>
+    <tr><td><code>\2a</code></td><td>Transparence du karaoké non chanté. Totalement transparent, il utilise le karaoké natif de YouTube, qui cache le texte et le fond non chantés même sur mobile.</td></tr>
+    <tr><td><code>\3a</code></td><td>Transparence du fond.</td></tr>
+    <tr><td><code>\4a</code></td><td>Transparence de l'ombre. Ne fonctionne qu'avec la couleur <code>&amp;H222222&amp;</code> et égale à celle du texte.</td></tr>
+    <tr><td><code>\alpha</code></td><td>Toutes les transparences à la fois.</td></tr>
+    <tr><td><code>\r</code>, <code>\rStyle</code></td><td>Revient au style de la ligne ou à un autre style.</td></tr>
+    <tr><td><code>\N</code></td><td>Saut de ligne.</td></tr>
+  </table></div>
+
+  <h3>Position, mouvement et animation</h3>
+  <div class="table"><table>
+    <tr><th>Balise</th><th>Effet</th></tr>
+    <tr><td><code>\an1</code> … <code>\an9</code></td><td>Alignement (position sur le pavé numérique).</td></tr>
+    <tr><td><code>\pos(x,y)</code></td><td>Position.</td></tr>
+    <tr><td><code>\move(x1,y1,x2,y2[,t1,t2])</code></td><td>Déplace d'un point à un autre, éventuellement seulement entre t1 et t2 (ms).</td></tr>
+    <tr><td><code>\fad(entrée,sortie)</code></td><td>Fondu simple.</td></tr>
+    <tr><td><code>\fade(a1,a2,a3,t1,t2,t3,t4)</code></td><td>Fondu complet. L'ombre et le contour ne suivent le fondu que s'ils sont <code>&amp;H222222&amp;</code> ; voir l'<a href="#fr-options">option de fondu</a>.</td></tr>
+    <tr><td><code>\t([t1,t2,][accél,]balises)</code></td><td>Anime couleurs, transparences et taille, avec durée et accélération.</td></tr>
+  </table></div>
+
+  <h3>Karaoké</h3>
+  <div class="table"><table>
+    <tr><th>Balise</th><th>Effet</th></tr>
+    <tr><td><code>\k</code></td><td>Durée de la syllabe, en centièmes de seconde. La syllabe passe de la couleur <code>\2c</code> à <code>\1c</code> quand elle est chantée.</td></tr>
+    <tr><td><code>\ytktFade</code></td><td>Karaoké avec transition progressive. Joli, mais produit de gros fichiers et peut ralentir certains appareils.</td></tr>
+    <tr><td><code>\ytktGlitch</code></td><td>Chaque syllabe apparaît en caractères aléatoires (latins, chinois, japonais ou coréens) avant de devenir le texte. Fonctionne mieux aligné à gauche, avec le non-chanté invisible.</td></tr>
+    <tr><td><code>\ytkt(Cursor,texte)</code></td><td>Place le texte (par exemple <code>_</code>) après le mot en train d'être chanté.</td></tr>
+    <tr><td><code>\ytkt(Cursor,balises,texte)</code></td><td>Pareil, avec l'apparence du curseur définie par des balises.</td></tr>
+    <tr><td><code>\ytkt(Cursor,intervalle,balises1,texte1,balises2,texte2,…)</code></td><td>Curseur animé : chaque image dure <code>intervalle</code> ms.</td></tr>
+    <tr><td><code>\ytkt(LCursor,…)</code></td><td>Comme Cursor, mais avant (à gauche du) mot chanté.</td></tr>
+  </table></div>
+
+  <h3>Effets</h3>
+  <div class="table"><table>
+    <tr><th>Balise</th><th>Effet</th></tr>
+    <tr><td><code>\ytshake</code></td><td>Le sous-titre tremble pendant toute sa durée, à 20 px au plus de sa position.</td></tr>
+    <tr><td><code>\ytshake(rayon)</code>, <code>\ytshake(rx,ry)</code></td><td>Un rayon choisi, ou un rayon par axe.</td></tr>
+    <tr><td><code>\ytshake(rayon,t1,t2)</code>, <code>\ytshake(rx,ry,t1,t2)</code></td><td>Tremble seulement entre t1 et t2 (ms depuis le début de la ligne).</td></tr>
+    <tr><td><code>\ytchroma</code></td><td>Aberration chromatique : des copies rouge, verte et bleue se rejoignent au début et se séparent à la fin (20 px, 270 ms).</td></tr>
+    <tr><td><code>\ytchroma(entrée,sortie)</code></td><td>Durées de réunion et de séparation, en ms.</td></tr>
+    <tr><td><code>\ytchroma(dx,dy,entrée,sortie)</code></td><td>Décalage de la première copie (la dernière va dans le sens opposé). Peut être négatif.</td></tr>
+    <tr><td><code>\ytchroma(couleur1,couleur2,…,alpha,dx,dy,entrée,sortie)</code></td><td>Remplace rouge/vert/bleu par autant de couleurs que voulu (<code>&amp;H…&amp;</code>).</td></tr>
+  </table></div>
+
+  <h3>Sur PC seulement</h3>
+  <div class="table"><table>
+    <tr><th>Balise</th><th>Effet</th></tr>
+    <tr><td><code>\ytruby</code> / <code>\ytruby8</code> / <code>\ytruby2</code></td><td>Ruby (furigana) : <code>{\ytruby}これは[漢/かん][字/じ]です</code>. 8 place le ruby au-dessus (par défaut), 2 en dessous. Sur mobile on voit <code>漢(かん)</code>.</td></tr>
+    <tr><td><code>\ytsub</code>, <code>\ytsup</code>, <code>\ytsur</code></td><td>Indice, exposant et retour à la normale.</td></tr>
+    <tr><td><code>\ytvert9</code></td><td>Texte vertical, colonnes de droite à gauche.</td></tr>
+    <tr><td><code>\ytvert7</code></td><td>Texte vertical, colonnes de gauche à droite.</td></tr>
+    <tr><td><code>\ytvert1</code></td><td>Sous-titre tourné de 90° dans le sens antihoraire.</td></tr>
+    <tr><td><code>\ytvert3</code></td><td>Tourné de 90° avec l'ordre des lignes inversé.</td></tr>
+    <tr><td><code>\ytpack1</code> / <code>\ytpack0</code></td><td>Active ou désactive le regroupement du texte dans l'espace d'un caractère pleine chasse (texte vertical).</td></tr>
+    <tr><td><code>\ytdir4</code> / <code>\ytdir6</code></td><td>Marque la ligne comme écrite de droite à gauche (de l'arabe dans des sous-titres anglais, par exemple). <code>\ytdir6</code> ne marche pas en pratique à cause d'un bug de YouTube.</td></tr>
+  </table></div>
+
+  <h2 id="fr-srt">Balises du .srt</h2>
+  <p>Le .srt accepte <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code> et <code>&lt;font color="#rrggbb"&gt;</code>. Il n'y a pas de position : le sous-titre est toujours en bas, au centre. Voir <a href="../exemplos/demonstracao-tags.srt">demonstracao-tags.srt</a>.</p>
+
+  <h2 id="fr-options">Options de la page</h2>
+  <div class="table"><table>
+    <tr><th>Option</th><th>Effet</th></tr>
+    <tr><td>Convertir en</td><td>.ytt (par défaut), .ass ou .srt. S'applique à tous les fichiers déposés après le choix.</td></tr>
+    <tr><td>Pendant les fondus, retirer l'ombre/le contour sous <b>45</b> % d'opacité</td><td>YouTube ne laisse pas l'ombre/le contour devenir transparent (seule la couleur #222222 le peut) : dans un fondu, le texte disparaît et le contour reste, ce qui laisse une traînée noire.
+      Activée, dès que l'opacité du texte passe sous le pourcentage (1 à 100, 45 par défaut) l'ombre/le contour est retiré et le texte disparaît proprement (le « true fade »). Désactivée, le résultat est identique au YTSubConverter d'origine.</td></tr>
+    <tr><td>Rayon de capture du \ytchroma</td><td>Sert à <a href="#fr-recuperer">récupérer les balises</a> : distance (5 à 400 px, 40 par défaut) dans laquelle les copies colorées du \ytchroma sont reconnues et rattachées à la ligne principale.</td></tr>
+    <tr><td>Corriger la duplication massive</td><td>Seulement pour la sortie .srt, activée par défaut. Un .json3/.ytt plein d'animations répète la même phrase sur des centaines de lignes, une par image.
+      La correction regroupe par position à l'écran (grille de 20 %), fusionne les images au même texte (ou au texte qui s'allonge) séparées de moins de 200 ms, écarte les phrases de moins de 300 ms, garde la plus basse quand deux se chevauchent et comble les trous jusqu'à 500 ms.</td></tr>
+    <tr><td>Langue</td><td>Portugais, anglais, espagnol ou français. Commence dans la langue du navigateur et reste enregistrée pour les visites suivantes.</td></tr>
+  </table></div>
+  <p class="tip">Les fichiers ne quittent jamais votre ordinateur : la conversion se fait dans le navigateur, avec les mêmes modules que la ligne de commande.</p>
+
+  <h2 id="fr-apercu">Aperçu, plein écran et débogage</h2>
+  <ul>
+    <li><b>Aperçu.</b> Apparaît après la conversion, ou quand vous déposez un .ytt/.srv3. Il dessine le sous-titre dans une zone 16:9 avec position, police, taille, couleurs, fond, contour/ombre, karaoké, ruby et texte vertical. Il a Lire/Pause, une ligne de temps et le bouton pour télécharger le fichier converti.</li>
+    <li><b>Vidéo.</b> Avec « Voir sur une vidéo de votre ordinateur », vous choisissez une vidéo et voyez le sous-titre par-dessus.</li>
+    <li><b>Plein écran.</b> Le bouton « Plein écran », la touche <kbd>F</kbd> ou un double-clic sur la vidéo.</li>
+    <li><b>Tableau de débogage.</b> « Afficher le tableau de débogage » liste, au temps actuel, chaque ligne à l'écran et ce que dessine chaque segment, avec les effets détectés et les balises .ass probables. Survolez une ligne du tableau pour la mettre en évidence sur la vidéo. « Copier le tableau » le copie en texte.</li>
+  </ul>
+  <p>L'aperçu est une approximation du lecteur YouTube. Les astuces qui dépendent de la façon dont YouTube dessine (par exemple plusieurs ombres sur la même ligne) peuvent un peu différer : vérifiez sur YouTube avant de publier.</p>
+
+  <h2 id="fr-recuperer">Récupérer les balises et comparer</h2>
+  <p>Convertir un .ytt en .ass rend chaque image d'animation comme une ligne séparée. Le bouton <b>« Essayer de récupérer les balises d’origine (heuristique) »</b>, affiché pour chaque .ytt/.srv3/.json3, fait le chemin inverse et tente de reconstruire le .ass source :</p>
+  <ul>
+    <li>fusionne les copies d'une ligne faites pour chaque type d'ombre en un seul style (<code>YTGlowSoftShadowHardShadowBevel</code>…) ;</li>
+    <li>fusionne les images consécutives au même texte en une ligne, et les lignes en phrases comme la correction de duplication ;</li>
+    <li>regarde la ligne entière : l'opacité de toutes les lettres qui change ensemble donne <code>\fad</code>/<code>\fade</code>, une position qui avance en ligne droite donne <code>\move</code>, une position qui saute autour d'un point donne <code>\ytshake</code> ;</li>
+    <li>regarde chaque syllabe : des couleurs qui changent en séquence donnent <code>\k</code> (et <code>\ytktFade</code> si le changement est progressif), le karaoké natif donne <code>\k</code>, des changements à des moments différents donnent un <code>\t</code> par segment ;</li>
+    <li>le texte qui change sur place : une syllabe qui devient un caractère aléatoire à la première image où elle est chantée donne <code>\ytkt(Glitch)</code>, et un court curseur qui avance sur la ligne donne <code>\ytkt(Cursor,…)</code> ou <code>\ytkt(LCursor,…)</code> ;</li>
+    <li>la traînée de copies sans ombre, chacune d'une couleur, qui s'éparpillent autour du texte donne <code>\ytchroma</code> (dans le rayon de capture).</li>
+  </ul>
+  <p>Il télécharge <code>nom.recuperado.ass</code> et, si un style a plus d'une ombre, un <code>StyleOptions.xml</code> pour le YTSubConverter d'origine. Les temps, rayons et positions sont approximatifs, car le .ytt stocke les positions en pourcentages entiers et un état toutes les deux images.</p>
+  <p>Ensuite, <b>« Comparer original × refait »</b> reconvertit le .ass récupéré en .ytt et affiche les deux côte à côte, lus ensemble. Toutes les 100 ms, les lignes à l'écran des deux côtés sont appariées (par texte et position) et comparées par texte, position, couleur et opacité.
+    La page montre la similarité globale et par propriété, une barre de temps avec la similarité à chaque instant, des boutons pour sauter d'une différence à l'autre et, à l'instant courant, ce qui diffère dans chaque ligne (contour orange : ligne différente ; rouge : ligne présente d'un seul côté). Le .ytt refait peut aussi être téléchargé.</p>
+
+  <h2 id="fr-cli">Ligne de commande</h2>
+  <p>Nécessite Node.js 18 ou plus récent, sans dépendances.</p>
+  <pre><code>node bin/ytsubconverter.js &lt;entrée&gt; [sortie] [options]
+
+node bin/ytsubconverter.js soustitre.srt               # écrit soustitre.ytt
+node bin/ytsubconverter.js soustitre.ass sortie.ytt
+node bin/ytsubconverter.js soustitre.ytt               # écrit soustitre.srt
+node bin/ytsubconverter.js soustitre.srt sortie.ass    # .ass avec les styles YT*
+node bin/ytsubconverter.js soustitre.json3 sortie.srt  # .srt propre, une ligne par phrase
+node bin/ytsubconverter.js soustitre.ytt --recuperar-tags</code></pre>
+  <p>Sans sortie, .ytt/.srv3/.json3 deviennent .srt et le reste .ytt, au nom de l'entrée. L'entrée n'est jamais écrasée : si les noms coïncident, la sortie est <code>nom.convertido.ext</code>. Le format de sortie vient de son extension (.ytt, .srv3, .srt ou .ass).</p>
+  <div class="table"><table>
+    <tr><th>Option</th><th>Effet</th></tr>
+    <tr><td><code>--fade-sombras[=45]</code></td><td>Pendant les fondus, retire l'ombre/le contour dès que l'opacité du texte passe sous le pourcentage (45 par défaut).</td></tr>
+    <tr><td><code>--manter-duplicacao</code></td><td>Désactive la correction de duplication pour la sortie .srt (automatique).</td></tr>
+    <tr><td><code>--corrigir-duplicacao</code></td><td>Applique aussi la correction aux sorties .ytt/.ass.</td></tr>
+    <tr><td><code>--recuperar-tags</code></td><td>.ytt/.srv3/.json3 vers .ass avec les balises reconstruites (sortie par défaut <code>nom.recuperado.ass</code>). Écrit aussi <code>nom.StyleOptions.xml</code> quand des styles ont plusieurs ombres, et affiche les balises trouvées et la similarité avec l'original.</td></tr>
+    <tr><td><code>--raio-captura=40</code></td><td>Rayon de capture du \ytchroma en px, utilisé avec <code>--recuperar-tags</code>.</td></tr>
+    <tr><td><code>-h</code>, <code>--help</code></td><td>Affiche l'utilisation.</td></tr>
+  </table></div>
+  <p>Il peut aussi servir de bibliothèque :</p>
+  <pre><code>import { SrtDocument, YttDocument } from './src/index.js';
+const ytt = new YttDocument(SrtDocument.parse(texteSrt)).save();
+const doc = YttDocument.parse(texteYtt);</code></pre>
+
+  <h2 id="fr-youtube">Envoyer sur YouTube</h2>
+  <ol>
+    <li>Dans YouTube Studio, ouvrez <b>Sous-titres</b> et cliquez sur la vidéo.</li>
+    <li>Si besoin, cliquez sur <b>Ajouter une langue</b>. Si la colonne Sous-titres contient déjà un brouillon, supprimez-le.</li>
+    <li>Cliquez sur <b>Ajouter</b> dans la colonne Sous-titres, puis sur <b>Importer un fichier</b>, choisissez <b>Avec code temporel</b> et sélectionnez le .ytt.</li>
+    <li>Cliquez sur <b>Publier</b>.</li>
+  </ol>
+  <p>L'aperçu de l'éditeur YouTube n'affiche pas les styles, c'est normal : ils apparaissent dans le lecteur. Si vous modifiez quoi que ce soit dans l'éditeur, les styles sont perdus et il faut renvoyer le fichier.</p>
+
+  <h2 id="fr-limites">Limites</h2>
+  <h3>De YouTube</h3>
+  <ul>
+    <li>Dans le navigateur, le sous-titre ne s'affiche pas si la taille du fichier (en bits, converti en json3 et compressé) divisée par la durée de la vidéo en secondes dépasse 10240. C'est difficile à atteindre, mais les effets lourds y arrivent.</li>
+    <li>Sur mobile, les sous-titres avec beaucoup d'effets (transformations, fondus, mouvements) ne sont même pas proposés.</li>
+    <li>Les applications mobiles ignorent le fond et affichent toujours un rectangle noir. Pour le texte sombre, le convertisseur ajoute une copie claire invisible que seul Android affiche ; sur iOS le texte sombre reste illisible.</li>
+    <li>En mode cinéma sur PC, les sous-titres décentrés s'écartent vers les côtés et peuvent sortir de la vidéo.</li>
+    <li>Ruby, indice/exposant, texte vertical et <code>\ytpack</code> ne marchent que sur PC. L'application Android utilise toujours la même taille de police.</li>
+    <li>L'ombre et le contour ne peuvent pas être transparents (sauf <code>&amp;H222222&amp;</code>), d'où l'option de fondu.</li>
+  </ul>
+  <h3>De ce portage</h3>
+  <ul>
+    <li>Le .ttml n'est pas encore pris en charge. Le .sbv et le .json3 sont en lecture seule.</li>
+    <li>La sortie .ass n'a pas le mode « visuel » de l'original (<code>VisualizingAssDocument</code>).</li>
+    <li>L'aperçu est une approximation du lecteur YouTube.</li>
+    <li>La récupération des balises est heuristique : temps, rayons et positions sont approximatifs, et des effets mélangés peuvent être lus comme une autre balise. Utilisez la comparaison pour voir où cela diffère.</li>
+    <li>Sur la page, la correction de duplication ne vaut que pour la sortie .srt (en ligne de commande, <code>--corrigir-duplicacao</code> l'applique aux autres).</li>
+  </ul>
+  </article>
+
+  <footer data-i18n-html="footer">Port em JavaScript do <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a>.</footer>
+</main>
+<script type="module" src="../documentacao/docs.js"></script>
+</body>
+</html>

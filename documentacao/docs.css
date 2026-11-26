@@ -1,0 +1,20 @@
+/* Complementa web/style.css só para a documentação. */
+main.docs { max-width: 760px; }
+.docs h2 { font-size: 1.25rem; margin: 40px 0 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.docs h3 { font-size: 1.05rem; margin: 24px 0 6px; }
+.docs p, .docs li { overflow-wrap: anywhere; }
+.docs a { color: var(--accent); }
+.docs .topbar a { color: var(--muted); }
+.docs code, .docs pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .875em; }
+.docs code { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.docs pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; }
+.docs pre code { border: 0; padding: 0; background: none; }
+.docs .table { overflow-x: auto; margin: 8px 0 16px; }
+.docs table { border-collapse: collapse; width: 100%; font-size: .9rem; background: var(--card); }
+.docs th, .docs td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.docs th { font-weight: 600; }
+.docs td:first-child code { white-space: nowrap; }
+.docs .toc { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.docs .toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
+@media (max-width: 520px) { .docs .toc ol { columns: 1; } }
+.docs .tip { border-left: 3px solid var(--accent); padding: 4px 12px; color: var(--muted); }

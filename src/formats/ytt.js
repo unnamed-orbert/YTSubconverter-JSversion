@@ -13,6 +13,9 @@ const ZERO_WIDTH_SPACE = '​';
 // Surrounded with zwsp's so it can be recognized and removed during reverse conversion
 const PADDING_SPACE = '​ ​';
 
+/** Corte padrão da hierarquia de tags: abaixo de 40% de opacidade do texto a sombra sai. */
+const DEFAULT_HIERARCHY_CUTOFF = 40;
+
 const REFERENCE_VIDEO_DIMENSIONS = { width: 1280, height: 720 };
 
 export class YttDocument extends SubtitleDocument {
@@ -23,15 +26,16 @@ export class YttDocument extends SubtitleDocument {
    *   fade o texto some e o contorno fica, deixando um rastro. Com a opção (porcentagem, ex.: 45), quando a opacidade
    *   do texto fica abaixo dela a sombra/contorno é removida e sobra só o texto, que some pela opacidade ("true fade").
    *   tagHierarchy: extensão do port (ver docs/hierarquia-de-tags.md). Em vez de deixar opaca toda sombra que deveria
-   *   estar transparente (fade, \\t de alpha, karaokê \\ytkt(Fade)), a sombra passa a acompanhar o texto: ela é
-   *   escrita sem "ec" (cinza #222222 com a opacidade do texto). As sombras escuras fazem isso desde o começo do fade;
-   *   as coloridas mantêm a cor até a opacidade cair abaixo do corte (fadeShadowCutoff ou 45%). E as cópias que o
+   *   estar transparente (fade, \\t de alpha, karaokê \\ytkt(Fade)), a cor do "ec" vai até a cor do texto e, abaixo
+   *   do corte (fadeShadowCutoff ou 40%), a sombra sai (ver letShadowsFollowText e shadowFade). E as cópias que o
    *   .ytt cria para cada tipo de sombra deixam de somar a opacidade do texto (cada uma fica com a fração certa).
    */
-  constructor(doc, { fadeShadowCutoff = null, tagHierarchy = false } = {}) {
+  constructor(doc, { fadeShadowCutoff = null, tagHierarchy = false, shadowFade = 'cor' } = {}) {
     super(doc);
     this.fadeShadowCutoff = fadeShadowCutoff;
     this.tagHierarchy = tagHierarchy;
+    /** Com tagHierarchy: 'cor' (sombra vai para a cor do texto) ou 'cinza' (sombra automática #222222). */
+    this.shadowFade = shadowFade;
   }
 
   /**
@@ -246,17 +250,33 @@ export class YttDocument extends SubtitleDocument {
   }
 
   /**
-   * Hierarquia de tags: o .ytt não tem opacidade de sombra. Com "ec" ela é opaca; sem "ec" é #222222 com a opacidade
-   * do texto (fo). Uma sombra que deveria estar transparente vira a sombra automática quando a opacidade dela está
-   * mais perto da do texto do que da opaca (é o caso de \\fad/\\fade, em que texto e sombra caem juntos).
-   * As coloridas só trocam abaixo do corte, para não perder a cor no começo do fade.
+   * Hierarquia de tags: o .ytt não tem opacidade de sombra. Com "ec" a sombra é opaca, mas a cor dela pode mudar a cada
+   * quadro; sem "ec" ela é #222222 com a opacidade do texto (fo). Uma sombra que deveria estar transparente (fade,
+   * karaokê \\ytkt(Fade), \\t de alpha: a opacidade dela está mais perto da do texto do que da opaca) é tratada assim:
+   * - 'cor' (padrão): o "ec" vai da cor da sombra até a cor do texto (a cor em destaque) enquanto o texto cai até o
+   *   corte (40%); abaixo do corte a sombra sai e o texto some sozinho pela opacidade, como o fade do libass.
+   * - 'cinza': a sombra vira a automática (#222222 acompanhando o fo); as coloridas só abaixo do corte.
    */
   letShadowsFollowText(section) {
     const textAlpha = section.foreColor.a;
-    const cutoff = ((this.fadeShadowCutoff ?? 45) / 100) * 255;
+    const cutoff = ((this.fadeShadowCutoff ?? DEFAULT_HIERARCHY_CUTOFF) / 100) * 255;
     for (const [type, color] of [...section.shadowColors]) {
       if (color.a >= 254) continue;
       if (Math.abs(color.a - textAlpha) >= Math.abs(color.a - 254)) continue;
+
+      if (this.shadowFade === 'cor') {
+        if (textAlpha < cutoff || section.foreColor.isEmpty) {
+          section.shadowColors.delete(type);
+          continue;
+        }
+        // r = 1 na sombra opaca, 0 no corte: a sombra chega à cor do texto exatamente no corte
+        const r = Math.max(0, Math.min(1, (color.a - cutoff) / (254 - cutoff)));
+        const mix = (from, to) => Math.round(to + (from - to) * r);
+        const text = section.foreColor;
+        section.shadowColors.set(type, Color.fromArgb(254, mix(color.r, text.r), mix(color.g, text.g), mix(color.b, text.b)));
+        continue;
+      }
+
       if (!isNearAutoEdgeColor(color) && color.a >= cutoff) continue;
       if (textAlpha === 0) section.shadowColors.delete(type);
       else section.shadowColors.set(type, Color.fromArgb(textAlpha, 0x22, 0x22, 0x22));

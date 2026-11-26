@@ -47,7 +47,8 @@ function baseName(name) {
 async function convertFile(file, targetExt) {
   const cutoff = Number(fadeCutoff.value);
   const options = {
-    fadeShadowCutoff: fadeShadows.checked && cutoff > 0 ? Math.min(cutoff, 100) : null,
+    // Com a hierarquia, a porcentagem é sempre o ponto em que o contorno sai e o texto some sozinho.
+    fadeShadowCutoff: (fadeShadows.checked || tagHierarchy.checked) && cutoff > 0 ? Math.min(cutoff, 100) : null,
     tagHierarchy: tagHierarchy.checked,
   };
   // Corrigir duplicação massiva: só no caminho .ytt/.json3 -> .srt (para .ytt/.ass a legenda fica como está).

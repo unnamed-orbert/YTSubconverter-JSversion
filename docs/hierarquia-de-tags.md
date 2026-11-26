@@ -35,15 +35,19 @@ O .ytt não tem opacidade de sombra. Só existem duas sombras possíveis:
 - com `ec` (cor qualquer): **opaca**, não importa o `fo` do texto;
 - sem `ec`: **cinza #222222 com a opacidade do texto** (`fo`).
 
-Com a hierarquia ligada, uma sombra que deveria estar transparente (regra 3) vira a sombra automática (sem `ec`)
-quando a opacidade dela está mais perto da do texto do que da opaca:
+Mas a cor do `ec` pode mudar a cada quadro. Com a hierarquia ligada, uma sombra que deveria estar transparente
+(a opacidade dela está mais perto da do texto do que da opaca: `\fad`, `\fade`, `\ytkt(Fade)`, `\t` de alpha):
 
-- sombra **escura** (preta/cinza-escura): troca desde o começo do fade, a cor praticamente não muda;
-- sombra **colorida**: mantém a cor (opaca) enquanto a opacidade está acima do corte (a porcentagem de
-  "tirar sombra no fade", 45% por padrão) e passa a acompanhar o texto abaixo dele.
+- enquanto o texto está acima do corte (**40%** por padrão, a porcentagem "tirar sombra/contorno abaixo de"), o `ec`
+  continua opaco e a cor dele vai da cor da sombra até a **cor do texto** (a cor em destaque), chegando nela
+  exatamente no corte. O contorno "se dissolve" no texto em vez de ficar como um rastro;
+- abaixo do corte o contorno sai e o texto some sozinho pela opacidade, como o fade do libass.
 
-Se a opção "No fade, tirar sombra/contorno abaixo de X%" também estiver ligada, ela continua valendo primeiro
-(abaixo de X% a sombra é removida, "true fade").
+No `\ytkt(Fade)` é o caminho inverso: a sílaba entra só com o texto e, a partir de 40%, ganha um contorno da cor
+dela que vai virando a cor do contorno.
+
+Na biblioteca existe também `shadowFade: 'cinza'` (sombra automática #222222 acompanhando o `fo`), que foi a
+primeira versão; no preview ficou pior (o contorno colorido virava cinza).
 
 Sombra transparente que não vem de transição (ex.: estilo com sombra `&H80000000` e texto opaco) continua como no
 original (opaca), porque a opacidade dela está mais perto da opaca do que da do texto.
@@ -51,7 +55,7 @@ original (opaca), porque a opacidade dela está mais perto da opaca do que da do
 ## Onde está no código
 
 - `src/formats/ass/karaokeTypes.js`, `applyFadeInDecorationOpacity`: regra 3 no `\ytkt(Fade)`.
-- `src/formats/ytt.js`, `letShadowsFollowText` e `splitTextOpacity`: limite do .ytt e regra 4.
+- `src/formats/ytt.js`, `letShadowsFollowText` (cor do `ec` e corte) e `splitTextOpacity` (regra 4).
 - `\fad`/`\fade` e `\t` de alpha já levavam a sombra junto no modelo (`AssLine.normalizeAlpha`); o que faltava era
   a escrita do .ytt não jogar isso fora.
 

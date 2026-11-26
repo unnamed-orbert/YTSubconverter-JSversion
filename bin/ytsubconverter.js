@@ -8,11 +8,12 @@ import { canFixMassiveDuplication, fixMassiveDuplication } from '../src/dedup.js
 import { recoverTags } from '../src/recover/recoverTags.js';
 
 const args = process.argv.slice(2);
-// --fade-sombras[=45]: no fade, tira sombra/contorno quando a opacidade do texto fica abaixo de 45% (ver YttDocument)
+// --fade-sombras[=40]: no fade, tira sombra/contorno quando a opacidade do texto fica abaixo de 40% (ver YttDocument)
 const fadeArg = args.find((a) => a === '--fade-sombras' || a.startsWith('--fade-sombras='));
-const fadeShadowCutoff = fadeArg ? Number(fadeArg.split('=')[1] ?? 45) : null;
+const fadeShadowCutoff = fadeArg ? Number(fadeArg.split('=')[1] ?? 40) : null;
 // Hierarquia de tags (docs/hierarquia-de-tags.md): fade, karaokê e \ytchroma compõem em vez de um cancelar o outro,
-// e as sombras acompanham o fade. Ligada por padrão; --modo-original deixa as sombras como no YTSubConverter.
+// e no fade a cor do contorno vai até a do texto; abaixo de 40% (ou do valor de --fade-sombras=N) o contorno sai.
+// Ligada por padrão; --modo-original deixa as sombras como no YTSubConverter.
 const ORIGINAL_FLAG = '--modo-original';
 const tagHierarchy = !args.includes(ORIGINAL_FLAG);
 // Corrigir duplicação massiva (src/dedup.js): de .ytt/.json3 para .srt é automático, como na ferramenta YTT → SRT.
@@ -29,7 +30,7 @@ const radiusArg = args.find((a) => a.startsWith('--raio-captura='));
 const captureRadius = radiusArg ? Number(radiusArg.split('=')[1]) : undefined;
 const [input, outputArg] = args.filter((a) => a !== fadeArg && a !== ORIGINAL_FLAG && a !== DEDUP_FLAG && a !== KEEP_DUP_FLAG && a !== RECOVER_FLAG && a !== radiusArg);
 if (!input || input === '-h' || input === '--help') {
-  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras[=45]] [--modo-original] [--manter-duplicacao | --corrigir-duplicacao] [--recuperar-tags [--raio-captura=40]]');
+  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras[=40]] [--modo-original] [--manter-duplicacao | --corrigir-duplicacao] [--recuperar-tags [--raio-captura=40]]');
   process.exit(input ? 0 : 1);
 }
 

@@ -41,39 +41,47 @@ test('desligada: igual ao original (contorno preto com "ec", opaco, até o fim d
   assert.ok(faint.every((p) => /ec="#000000"/.test(p)));
 });
 
-test('\\fad: contorno escuro vira a sombra automática e some junto com o texto', async () => {
-  const faint = pens(await convert(FADE_OUT, true)).filter((p) => fo(p) > 0 && fo(p) < 254);
-  assert.ok(faint.length > 2);
-  for (const p of faint) {
-    assert.ok(/et="3"/.test(p), p);
-    assert.ok(!/ec=/.test(p), p);
-  }
-});
+const mixOf = (pen) => /ec="#([0-9A-F]{6})"/.exec(pen)?.[1];
 
-test('\\fad com contorno colorido: mantém a cor acima do corte e acompanha o texto abaixo', async () => {
+test('\\fad: o contorno vai até a cor do texto e sai abaixo de 40%', async () => {
   const all = pens(await convert('Dialogue: 0,0:00:05.00,0:00:08.00,Rosa,,0,0,0,,{\\fad(0,2000)}Rosa\n', true));
-  const limit = 0.45 * 255;
-  const above = all.filter((p) => fo(p) >= limit && fo(p) < 254);
+  const limit = 0.4 * 255;
+  const above = all.filter((p) => fo(p) >= limit && fo(p) < 250);
   const below = all.filter((p) => fo(p) > 0 && fo(p) < limit);
   assert.ok(above.length > 2 && below.length > 2);
-  for (const p of above) assert.ok(p.includes('ec="#CF4575"'), p);
-  for (const p of below) assert.ok(/et="3"/.test(p) && !/ec=/.test(p), p);
+  // Acima do corte: "ec" opaco com uma cor entre o rosa do contorno (#CF4575) e o branco do texto (#FEFEFE)
+  for (const p of above) {
+    const ec = mixOf(p);
+    assert.ok(ec, p);
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(ec.slice(i, i + 2), 16));
+    assert.ok(r >= 0xcf && g >= 0x45 && b >= 0x75, p);
+  }
+  // Quanto mais transparente o texto, mais perto do branco
+  const sorted = above.sort((x, y) => fo(y) - fo(x)).map((p) => parseInt(mixOf(p).slice(2, 4), 16));
+  assert.ok(sorted[sorted.length - 1] > sorted[0]);
+  // Abaixo do corte: sem contorno, só o texto sumindo
+  for (const p of below) assert.ok(!/et=/.test(p), p);
 });
 
-test('\\ytkt(Fade) com \\2c transparente: a sombra da sílaba aparece junto com o texto', async () => {
+test('fadeShadowCutoff muda o corte da hierarquia', async () => {
+  const all = pens(await convert(FADE_OUT, true, { fadeShadowCutoff: 60 }));
+  const faint = all.filter((p) => fo(p) > 0 && fo(p) < 0.6 * 255);
+  assert.ok(faint.length > 2);
+  for (const p of faint) assert.ok(!/et=/.test(p), p);
+});
+
+test('\\ytkt(Fade) com \\2c transparente: a sílaba não nasce como um contorno opaco', async () => {
   const line = 'Dialogue: 0,0:00:01.00,0:00:04.00,Preto,,0,0,0,,{\\ytkt(Fade)\\k50}Pri{\\k50}mei{\\k50}ra\n';
   // Logo depois do começo da sílaba "mei" (1,5 s): o texto dela ainda está quase transparente
   const at = (ytt) => layersAt(ytt, 1540).flat().find((s) => s.text.includes('mei'));
 
   const original = at(await convert(line, false));
-  assert.ok(original.foreColor.a < 128);
+  assert.ok(original.foreColor.a < 100);
   assert.equal([...original.shadowColors.values()][0].a, 254, 'no original o contorno já nasce opaco');
 
   const hierarchy = at(await convert(line, true));
-  assert.ok(hierarchy.foreColor.a < 128);
-  const shadow = [...hierarchy.shadowColors.values()][0];
-  assert.equal(shadow.toArgb() & 0xffffff, 0x222222);
-  assert.equal(shadow.a, hierarchy.foreColor.a, 'o contorno acompanha a opacidade do texto');
+  assert.ok(hierarchy.foreColor.a < 100);
+  assert.equal(hierarchy.shadowColors.size, 0, 'abaixo do corte a sílaba entra só com o texto');
 });
 
 test('várias sombras: as cópias do .ytt não somam a opacidade do texto', async () => {

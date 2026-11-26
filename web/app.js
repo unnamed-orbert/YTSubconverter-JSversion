@@ -3,12 +3,14 @@ import { loadDocument, convertDocument, getInputFormat } from '../src/convert.js
 import { InputFormat } from '../src/detect.js';
 import { YttDocument } from '../src/formats/ytt.js';
 import { YttPreview } from './preview.js';
+import { canFixMassiveDuplication, fixMassiveDuplication } from '../src/dedup.js';
 
 const drop = document.getElementById('drop');
 const input = document.getElementById('file');
 const format = document.getElementById('format');
 const fadeShadows = document.getElementById('fadeShadows');
 const fadeCutoff = document.getElementById('fadeCutoff');
+const fixDuplication = document.getElementById('fixDuplication');
 const results = document.getElementById('results');
 const preview = new YttPreview(document.getElementById('preview'));
 
@@ -28,6 +30,7 @@ function baseName(name) {
 async function convertFile(file, targetExt) {
   const cutoff = Number(fadeCutoff.value);
   const options = { fadeShadowCutoff: fadeShadows.checked && cutoff > 0 ? Math.min(cutoff, 100) : null };
+  const dedup = fixDuplication.checked;
   const content = new Uint8Array(await file.arrayBuffer());
   const format = getInputFormat(file.name, content);
   if (!format) throw new Error('Não reconheci o formato desta legenda. Use .srt, .sbv, .ass, .ytt/.srv3 ou json3.');
@@ -35,12 +38,12 @@ async function convertFile(file, targetExt) {
   const name = baseName(file.name) + targetExt;
 
   // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio (a não ser que a opção do fade
-  // esteja ligada, que muda as sombras).
-  if (isYtt && YTT_EXTENSIONS.includes(targetExt) && options.fadeShadowCutoff == null) {
+  // esteja ligada, que muda as sombras, ou a de corrigir duplicação, que junta as linhas).
+  if (isYtt && YTT_EXTENSIONS.includes(targetExt) && options.fadeShadowCutoff == null && !dedup) {
     return { download: { name, blob: file }, ytt: content };
   }
 
-  const doc = await loadDocument(file.name, content);
+  const doc = await load(file.name, content, dedup);
   if (doc.lines.length === 0) throw new Error('Nenhuma legenda encontrada neste arquivo.');
   const text = convertDocument(doc, targetExt, options).save({ bom: true });
   // O BOM vem como \uFEFF no texto; o Blob grava em UTF-8.
@@ -48,10 +51,17 @@ async function convertFile(file, targetExt) {
 
   let ytt;
   if (YTT_EXTENSIONS.includes(targetExt)) ytt = text;
-  else if (isYtt) ytt = content;
+  else if (isYtt && !dedup) ytt = content;
   // save() altera o documento, então o .ytt do preview sai de uma leitura nova.
-  else ytt = convertDocument(await loadDocument(file.name, content), '.ytt', options).save();
+  else ytt = convertDocument(await load(file.name, content, dedup), '.ytt', options).save();
   return { download, ytt };
+}
+
+/** Lê o arquivo e, se pedido e a entrada for .ytt/.json3, junta as cópias quadro a quadro. */
+async function load(fileName, content, dedup) {
+  const doc = await loadDocument(fileName, content);
+  if (dedup && canFixMassiveDuplication(doc)) fixMassiveDuplication(doc);
+  return doc;
 }
 
 function addRow(fileName) {

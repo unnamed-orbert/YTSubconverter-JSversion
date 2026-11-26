@@ -8,3 +8,4 @@ export { YttDocument } from './formats/ytt.js';
 export { Json3Document, json3ToSrv3 } from './formats/json3.js';
 export { loadDocument, convertDocument, isExtensionSupported, getInputFormat } from './convert.js';
 export { detectFormat, InputFormat } from './detect.js';
+export { fixMassiveDuplication, canFixMassiveDuplication } from './dedup.js';

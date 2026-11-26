@@ -16,6 +16,7 @@ node bin/ytsubconverter.js legenda.ass saida.ytt
 node bin/ytsubconverter.js legenda.ytt          # gera legenda.srt
 node bin/ytsubconverter.js legenda.srt saida.ass   # .ass com os estilos YT* padrão
 node bin/ytsubconverter.js legenda.json3 saida.ass # json3 do YouTube para .ass (ou saida.ytt)
+node bin/ytsubconverter.js legenda.ytt saida.srt --corrigir-duplicacao  # uma linha por frase (ver abaixo)
 ```
 
 O formato de entrada é reconhecido **pelo conteúdo** (`src/detect.js`), não pela extensão: um json3
@@ -66,6 +67,17 @@ conteúdo do srv3/.ytt em JSON (`pens`, `wsWinStyles`, `wpWinPositions`, `events
 `src/formats/json3.js` traduz o JSON para srv3 e usa o leitor de .ytt, que desfaz os truques do
 YTSubConverter (espaços de preenchimento, cópia para texto escuro etc.). Arquivos salvos como
 `legenda.json3.txt`, ou com outra extensão, são reconhecidos pelo conteúdo.
+
+### Corrigir duplicação massiva
+
+Um .ytt/.json3 feito a partir de um .ass com animação (`\fade`, `\move`, `\t`, karaokê, várias sombras)
+repete a mesma frase em centenas de linhas, uma por quadro. Com a opção "Corrigir duplicação massiva"
+(página) ou `--corrigir-duplicacao` (CLI), `src/dedup.js` junta essas cópias em uma linha por frase:
+agrupa por posição na tela (grade de 20%), junta quadros com o mesmo texto (ou texto que cresce) separados
+por menos de 200 ms, descarta frases com menos de 300 ms, na sobreposição fica a mais de baixo e fecha
+buracos de até 500 ms. É o port da ferramenta "YTT → SRT" do Carlos. A única diferença: lá uma janela
+encostada à esquerda (`ah="0"`) era tratada como centro; aqui ela fica à esquerda. A opção só vale para
+entrada .ytt/.srv3/.json3; nas outras não faz nada.
 
 ## Testes
 

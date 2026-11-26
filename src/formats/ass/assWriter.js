@@ -70,6 +70,7 @@ class TextWriter {
  */
 export function saveAssDocument(doc, { bom = false, newline = '\r\n' } = {}) {
   const writer = new TextWriter(newline);
+  addMissingStructureStyles(doc);
   writeHeader(doc, writer);
   writeStyles(doc, writer);
   writeLines(doc, writer);
@@ -177,6 +178,40 @@ function writeLine(doc, line, writer) {
   }
 
   writer.writeLine(lineContent.toString());
+}
+
+const SHADOW_NAME_ORDER = [
+  [ShadowType.Glow, 'Glow'],
+  [ShadowType.SoftShadow, 'SoftShadow'],
+  [ShadowType.HardShadow, 'HardShadow'],
+  [ShadowType.Bevel, 'Bevel'],
+];
+
+/**
+ * Extension of the port: in C# a section whose shadow combination has no style (e.g. Glow + SoftShadow +
+ * HardShadow + Bevel, which the default styles don't have) crashes the save. Here a style is added for it, named
+ * YT<types>[Box] so the .ass reader infers its shadow types from the name when there is no StyleOptions.xml.
+ */
+function addMissingStructureStyles(doc) {
+  if (!(doc._styles instanceof Map)) return;
+  for (const line of doc.lines) {
+    for (const section of line.sections) {
+      if (getStyleMatchingStructure(doc, section) != null) continue;
+      const box = section.backColor.a > 0;
+      const types = SHADOW_NAME_ORDER.filter(([type]) => section.shadowColors.has(type));
+      const name = `YT${types.length > 0 ? types.map(([, n]) => n).join('') : 'Plain'}${box ? 'Box' : ''}`;
+      if (doc._styles.has(name)) continue;
+      const glow = !box && section.shadowColors.has(ShadowType.Glow);
+      const template =
+        [...doc.styles].find((s) => s.hasOutlineBox === box && s.hasOutline === glow && !s.outlineIsBox === !box) ??
+        [...doc.styles].find((s) => s.hasOutlineBox === box) ??
+        doc.defaultStyle;
+      const style = Object.assign(Object.create(Object.getPrototypeOf(template)), template, { name });
+      if (glow && !style.hasOutline) style.outlineThickness = 2;
+      doc._styles.set(name, style);
+      doc._styleOptions?.delete?.(name);
+    }
+  }
 }
 
 /** In C# a missing style ends in a NullReferenceException; here we give a readable error instead. */

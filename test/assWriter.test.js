@@ -202,14 +202,16 @@ test('generic lines get \\k durations from their section start offsets', () => {
   assert.match(lastLine(ass.save()), /\\k30\}a\{\\k70\}b$/);
 });
 
-test('a section whose structure matches no style is an error', () => {
+test('a section whose structure matches no style gets a YT<shadows> style (C# crashes here)', () => {
   const doc = newDocWithLine((line, doc) => {
     const section = plainSection(doc, 'x');
     section.shadowColors.set(ShadowType.Glow, Color.Black);
     section.shadowColors.set(ShadowType.SoftShadow, Color.Black);
     line.sections.push(section);
   });
-  assert.throws(() => doc.save(), /No style matches/);
+  const out = doc.save();
+  assert.match(out, /^Style: YTGlowSoftShadow,/m);
+  assert.match(lastLine(out), /^Dialogue: [^,]*,[^,]*,[^,]*,YTGlowSoftShadow,/);
 });
 
 // ---------------------------------------------------------------------------------------------

@@ -677,10 +677,87 @@ function charTimeline(frames, states, known, j, from, to) {
     if (ref) keyframes[i] = { ...keyframes[i], state: { ...st, fore: Color.fromArgb(st.fore.a, ref.state.fore.r, ref.state.fore.g, ref.state.fore.b) } };
   }
 
+  mergeAcceleratedKeyframes(keyframes, frames, states, known, j, from, to);
+
   return {
     initial: stateToChar(c0, keyframes[0].state),
-    transitions: keyframes.slice(1).map((k) => ({ t1: Math.round(k.t1), t2: Math.round(Math.max(k.t2, k.t1)), target: stateToChar(c0, k.state) })),
+    transitions: keyframes.slice(1).map((k) => ({
+      t1: Math.round(k.t1),
+      t2: Math.round(Math.max(k.t2, k.t1)),
+      target: stateToChar(c0, k.state),
+      ...(k.accel ? { accel: k.accel } : {}),
+    })),
   };
+}
+
+const stateChannels = (st) => [st.fore.r, st.fore.g, st.fore.b, st.fore.a, st.back.r, st.back.g, st.back.b, st.back.a, st.scale * 100];
+
+/**
+ * \t com aceleração (\t(t1,t2,accel,...)): a cor anda devagar no começo (ou no fim), e como a cor do .ytt é
+ * arredondada, os quadros iguais viram "trechos parados" curtos que picam a curva em vários \t. Uma sequência de
+ * transições que vão sempre na mesma direção, com paradas curtas entre elas, vira uma transição só, com a
+ * aceleração que melhor explica os quadros.
+ */
+function mergeAcceleratedKeyframes(keyframes, frames, states, known, j, from, to) {
+  for (let i = 1; i < keyframes.length; i++) {
+    let last = i;
+    while (last + 1 < keyframes.length && keyframes[last + 1].t1 - keyframes[last].t2 <= 2000) last++;
+    // A maior sequência (de pelo menos três passos, todos na mesma direção) que uma curva só explica
+    for (let m = last; m - i >= 2; m--) {
+      if (!monotonicKeyframes(keyframes.slice(i - 1, m + 1))) continue;
+      const fit = fitAcceleration(keyframes, i, m, frames, states, known, j, from, to);
+      if (!fit) continue;
+      const merged = { state: keyframes[m].state, t1: fit.t1, t2: keyframes[m].t2 };
+      if (Math.abs(fit.accel - 1) >= 0.1) merged.accel = Math.round(fit.accel * 10) / 10;
+      keyframes.splice(i, m - i + 1, merged);
+      break;
+    }
+  }
+}
+
+function fitAcceleration(keyframes, i, m, frames, states, known, j, from, to) {
+  const v0 = stateChannels(keyframes[i - 1].state);
+  const v1 = stateChannels(keyframes[m].state);
+  let channel = 0;
+  for (let c = 1; c < v0.length; c++) if (Math.abs(v1[c] - v0[c]) > Math.abs(v1[channel] - v0[channel])) channel = c;
+  const delta = v1[channel] - v0[channel];
+  if (Math.abs(delta) < 8) return null;
+
+  const t2 = keyframes[m].t2;
+  const prevEnd = i - 1 === 0 ? frames[from].start : keyframes[i - 1].t2;
+  let best = null;
+  for (const t1 of new Set([keyframes[i].t1, prevEnd])) {
+    if (t2 - t1 < 100) continue;
+    const samples = [];
+    for (let f = from; f <= to; f++) {
+      if (!known[f]) continue;
+      const mid = (frames[f].start + frames[f].end) / 2;
+      if (mid < t1 || mid > t2) continue;
+      samples.push([(mid - t1) / (t2 - t1), (stateChannels(states[f][j])[channel] - v0[channel]) / delta]);
+    }
+    if (samples.length < 4) continue;
+    for (let a = 0.2; a <= 6.001; a += 0.05) {
+      let err = 0;
+      for (const [x, y] of samples) err += (y - x ** a) ** 2;
+      err /= samples.length;
+      if (!best || err < best.err) best = { t1, accel: Math.round(a * 20) / 20, err };
+    }
+  }
+  return best && best.err <= 0.005 ? best : null;
+}
+
+function monotonicKeyframes(list) {
+  const values = list.map((k) => stateChannels(k.state));
+  for (let c = 0; c < values[0].length; c++) {
+    let dir = 0;
+    for (let n = 1; n < values.length; n++) {
+      const d = Math.sign(Math.round(values[n][c] - values[n - 1][c]));
+      if (d === 0) continue;
+      if (dir !== 0 && d !== dir) return false;
+      dir = d;
+    }
+  }
+  return true;
 }
 
 function sameTransitionTimes(a, b) {
@@ -773,8 +850,21 @@ function detectFade(event, alphas, maxAlpha, phi) {
     });
   };
 
+  // Karaokê \\ytkt(Fade) com as sílabas não cantadas invisíveis: a primeira sílaba aparece aos poucos e parece um
+  // \\fad da linha, mas as seguintes (invisíveis no quadro de referência) também aparecem aos poucos depois.
+  const gradualLater = (ref) =>
+    visible.some((j) => {
+      if (frames[ref].chars[j].fore.a > ALPHA_TOLERANCE) return false;
+      let ramp = 0;
+      for (let f = ref + 1; f < frames.length; f++) {
+        const a = frames[f].chars[j].fore.a;
+        if (a > 20 && a < maxAlpha - 20) ramp++;
+      }
+      return ramp >= 2;
+    });
+
   let inRamp = null;
-  if (refIn > 0) {
+  if (refIn > 0 && !gradualLater(refIn)) {
     const idx = [...Array(refIn).keys()];
     if (idx.every((f) => consistent(f, refIn))) inRamp = fitRamp(frames, alphas, maxAlpha, idx, true, event.start);
   }
@@ -1364,8 +1454,13 @@ function writeAss(doc, events) {
     // Cor das letras ainda não cantadas no karaokê = estado inicial delas
     let secondary = null;
     if (e.karaoke) {
-      const unsung = e.initialChars.find((c, j) => e.visible.includes(j) && !sameState(c, chars[j])) ?? e.initialChars[firstVisible];
-      secondary = e.karaoke.native ? Color.fromArgb(0, 0, 0, 0) : unsung.fore;
+      const changing = e.initialChars.map((c, j) => j).filter((j) => e.visible.includes(j) && !isBlank(chars[j].ch) && !sameState(e.initialChars[j], chars[j]));
+      const unsung = e.initialChars[changing[0] ?? firstVisible];
+      // A opacidade vem da última sílaba: a primeira pode já estar no meio da troca (\\ytkt(Fade)) no primeiro quadro.
+      // A cor vem da primeira, porque o .ytt pinta de preto as letras invisíveis.
+      const last = e.initialChars[changing[changing.length - 1] ?? firstVisible];
+      const fore = last.fore.a < unsung.fore.a ? Color.fromArgb(last.fore.a, unsung.fore.r, unsung.fore.g, unsung.fore.b) : unsung.fore;
+      secondary = e.karaoke.native ? Color.fromArgb(0, 0, 0, 0) : fore;
     }
     const style = registry.get((e.mode === 'line' || e.mode === 'chars' ? e.initialChars : chars)[firstVisible], secondary);
     const builder = new AssLineContentBuilder();
@@ -1444,7 +1539,7 @@ function writeAss(doc, events) {
     const animated = e.mode === 'line' || e.mode === 'chars';
     const baseOf = (j) => (animated ? e.timelines[j].initial : chars[j]);
     const transOf = (j) => (animated ? e.timelines[j].transitions : []);
-    const transKey = (j) => transOf(j).map((t) => `${round10(t.t1 - e.start)},${round10(t.t2 - e.start)},${transformTags(charTagState(baseOf(j), secondary, style), charTagState(t.target, secondary, style))}`).join('|');
+    const transKey = (j) => transOf(j).map((t) => `${round10(t.t1 - e.start)},${round10(t.t2 - e.start)},${t.accel ?? 1},${transformTags(charTagState(baseOf(j), secondary, style), charTagState(t.target, secondary, style))}`).join('|');
 
     let prev = styleState(style);
     let prevAnimated = null;
@@ -1477,7 +1572,8 @@ function writeAss(doc, events) {
         const t1 = round10(t.t1 - e.start);
         const t2 = Math.max(round10(t.t2 - e.start), t1 + 10);
         const full = t1 <= 70 && e.end - t.t2 <= 70;
-        const text = full ? `\\t(${tagText})` : `\\t(${t1},${t2},${tagText})`;
+        const accel = t.accel ? `${formatNumber(t.accel)},` : '';
+        const text = full ? `\\t(${accel}${tagText})` : `\\t(${t1},${t2},${accel}${tagText})`;
         builder._pendingTags += text;
         if (e.mode === 'line' && !lineReasonDone) addTag('t', text, `todas as letras mudam juntas de ${t1} ms a ${t2} ms`);
         if (e.mode === 'chars') charTransforms++;

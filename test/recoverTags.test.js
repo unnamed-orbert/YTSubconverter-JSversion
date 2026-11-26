@@ -148,3 +148,37 @@ test('texto que cresce (máquina de escrever) não vira cursor nem glitch', asyn
   assert.deepEqual(result.events.map((e) => e.text), ['O cas', 'O caste', 'O castelo']);
   assert.ok(result.events.every((e) => !tagOf(e, 'ytkt')));
 });
+
+test('\\t com aceleração vira um \\t só, com o expoente', async () => {
+  const e = only(await roundTrip('0:00:00.00,0:00:10.00,YTGlow,,0,0,0,,{\\an5\\pos(640,360)\\t(0,8000,2,\\c&HFF8000&)}Acelera'));
+  const t = tagOf(e, 't');
+  assert.ok(t, e.assText);
+  assert.equal((e.assText.match(/\\t\(/g) ?? []).length, 1, e.assText);
+  const [t1, t2, accel] = t.text.match(/-?\d+(?:\.\d+)?/g).map(Number);
+  near(t1, 0, 100, 't1');
+  near(t2, 8000, 150, 't2');
+  near(accel, 2, 0.3, 'aceleração');
+});
+
+test('\\ytkt(Fade) com sílabas invisíveis: sem \\fad falso e sem mostrar as sílabas antes da hora', async () => {
+  const result = await roundTrip('0:00:01.00,0:00:04.00,YTGlow,,0,0,0,,{\\an5\\pos(640,360)\\ytkt(Fade)\\2a&HFF&}{\\k100}Faço {\\k100}então {\\k100}voa-la');
+  const e = only(result);
+  assert.ok(!tagOf(e, 'fad'), e.assText);
+  assert.match(e.assText, /\\k\d+\}?Faço \{\\k\d+\}então \{\\k\d+\}voa-la/);
+  // Volta: no começo, só "Faço" aparece
+  const back = convertDocument(await loadDocument('r.ass', result.ass), '.ytt');
+  const early = back.lines.find((l) => l.start <= 1300 && l.end > 1300);
+  const visible = early.sections.filter((s) => s.foreColor.a > 0).map((s) => s.text).join('');
+  assert.equal(visible.trim(), 'Faço');
+});
+
+test('.ass recuperado com várias sombras pode ser salvo como .ass de novo', async () => {
+  const ass = header.replace('Style: YTPlain', 'Style: Multi,Roboto,38,&H00FFFFFF,&HFF000000,&H000000FF,&H00FF0000,1,0,0,0,100,100,0,0,1,2,4,2,25,25,15,1\nStyle: YTPlain');
+  const { loadStyleOptions } = await import('../src/formats/ass/index.js');
+  const options = loadStyleOptions('<StyleOptions><Style><Name>Multi</Name><ShadowType>Glow SoftShadow HardShadow Bevel</ShadowType></Style></StyleOptions>');
+  const doc = await loadDocument('x.ass', ass + 'Dialogue: 0,0:00:01.00,0:00:03.00,Multi,,0,0,0,,{\\an5\\pos(640,360)}Tão\n', { styleOptions: options });
+  const result = recoverTags(convertDocument(doc, '.ytt').save());
+  const again = convertDocument(await loadDocument('r.ass', result.ass), '.ass').save();
+  assert.match(again, /^Style: YTGlowSoftShadowHardShadowBevel,/m);
+  assert.match(again, /YTGlowSoftShadowHardShadowBevel,,0,0,0,,.*Tão/);
+});

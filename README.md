@@ -95,6 +95,10 @@ A conversão comum .ytt → .ass devolve cada quadro da animação como uma linh
   posição pulando em volta de um ponto → `\ytshake`;
 - olha cada letra/sílaba: troca de cor em sequência → `\k` (e `\ytkt(Fade)` se a troca é gradual), o atributo
   `t` do karaokê nativo → `\k`, mudanças em momentos diferentes → um `\t` por trecho;
+- olha o texto que muda de um quadro para outro no mesmo lugar: uma sílaba que vira um caractere aleatório no
+  primeiro quadro em que é cantada → `\ytkt(Glitch)`; um cursor curto ("_", "|"...) que anda pela linha →
+  `\ytkt(Cursor,...)` (depois do que já foi cantado) ou `\ytkt(LCursor,...)` (antes da sílaba cantada), com o
+  intervalo e as cores de cada cursor;
 - o "rastro" de cópias do mesmo texto, sem sombra e cada uma de uma cor, que se separam em volta do texto antes
   de ele aparecer ou depois de ele sumir → `\ytchroma`.
 

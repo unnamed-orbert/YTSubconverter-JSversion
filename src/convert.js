@@ -3,40 +3,55 @@
 import { SbvDocument, SrtDocument } from './formats/srt.js';
 import { YttDocument } from './formats/ytt.js';
 import { AssDocument } from './formats/ass/assDocument.js';
-import { Json3Document, looksLikeJson3 } from './formats/json3.js';
-import { decodeText } from './util/misc.js';
+import { Json3Document } from './formats/json3.js';
+import { detectFormat, InputFormat } from './detect.js';
+
+const EXTENSION_FORMATS = {
+  '.srt': InputFormat.Srt,
+  '.sbv': InputFormat.Sbv,
+  '.ytt': InputFormat.Ytt,
+  '.srv3': InputFormat.Ytt,
+  '.json3': InputFormat.Json3,
+  '.json': InputFormat.Json3,
+  '.ass': InputFormat.Ass,
+};
 
 /**
- * Loads a subtitle file by extension.
- * @param {string} fileName used only for its extension
+ * Descobre o formato de um arquivo: primeiro pelo conteúdo e, se ele não for reconhecido, pela extensão.
+ * @param {string} fileName pode não ter extensão
+ * @param {string | Uint8Array} content
+ * @returns {string | null} extensão interna do formato (InputFormat) ou null
+ */
+export function getInputFormat(fileName, content) {
+  const dot = fileName.lastIndexOf('.');
+  const ext = dot < 0 ? '' : fileName.slice(dot).toLowerCase();
+  return detectFormat(content) ?? EXTENSION_FORMATS[ext] ?? null;
+}
+
+/**
+ * Loads a subtitle file. The format is recognized by the content (see detect.js); the file name's
+ * extension is only used when the content isn't recognized.
+ * @param {string} fileName
  * @param {string | Uint8Array} content
  * @param {object} [options] passed to the format loader (e.g. styleOptions for .ass)
  */
 export async function loadDocument(fileName, content, options = {}) {
-  const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
-  switch (ext) {
-    case '.srt':
+  const format = getInputFormat(fileName, content);
+  switch (format) {
+    case InputFormat.Srt:
       return SrtDocument.parse(content);
-    case '.sbv':
+    case InputFormat.Sbv:
       return SbvDocument.parse(content);
-    case '.srv3':
-    case '.ytt':
+    case InputFormat.Ytt:
       return YttDocument.parse(content);
-    case '.json3':
-    case '.json':
+    case InputFormat.Json3:
       return Json3Document.parse(content);
-    case '.ass': {
-      // The .ass reader is developed separately; load it lazily so the rest works without it.
+    case InputFormat.Ass: {
       const { loadAssDocument } = await import('./formats/ass/index.js');
       return loadAssDocument(content, options);
     }
-    default: {
-      // Extensão desconhecida (ex.: legenda.json3.txt): tenta reconhecer pelo conteúdo.
-      const text = decodeText(content);
-      if (looksLikeJson3(text)) return Json3Document.parse(text);
-      if (/^\s*<\?xml[^>]*>\s*<timedtext\b|^\s*<timedtext\b/.test(text)) return YttDocument.parse(text);
-      throw new Error(`Formato de entrada não suportado: ${ext}`);
-    }
+    default:
+      throw new Error('Formato de legenda não reconhecido. Use .srt, .sbv, .ass, .ytt/.srv3 ou json3.');
   }
 }
 
@@ -44,8 +59,11 @@ export function isExtensionSupported(ext) {
   return ['.srt', '.sbv', '.ass', '.ytt', '.srv3', '.json3', '.json'].includes(ext.toLowerCase());
 }
 
-/** Converts a document to the format of the given extension. */
-export function convertDocument(doc, newExtension) {
+/**
+ * Converts a document to the format of the given extension.
+ * @param {object} [options] for .ytt/.srv3: {fadeShadowCutoff} (see YttDocument)
+ */
+export function convertDocument(doc, newExtension, options = {}) {
   switch (newExtension?.toLowerCase()) {
     case '.ass':
       // VisualizingAssDocument (visual = true in C#) is not ported
@@ -54,7 +72,7 @@ export function convertDocument(doc, newExtension) {
       return new SrtDocument(doc);
     case '.ytt':
     case '.srv3':
-      return new YttDocument(doc);
+      return new YttDocument(doc, options);
     default:
       throw new Error(`Formato de destino não suportado: ${newExtension}`);
   }

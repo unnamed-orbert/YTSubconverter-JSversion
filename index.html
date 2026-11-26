@@ -10,10 +10,10 @@
 <main>
   <h1>Conversor de legendas para o YouTube</h1>
   <p class="sub">Arraste uma legenda <b>.srt</b>, <b>.sbv</b>, <b>.ass</b> ou <b>.json3</b> (o formato que o YouTube serve) e baixe o <b>.ytt</b> pronto para enviar ao YouTube,
-    ou solte um <b>.ytt</b> para ver como ele fica. Tudo acontece no seu navegador: o arquivo não é enviado para lugar nenhum.</p>
+    ou solte um <b>.ytt</b> para ver como ele fica. O formato é reconhecido pelo conteúdo, então o arquivo pode vir sem extensão ou com a extensão errada. Tudo acontece no seu navegador: o arquivo não é enviado para lugar nenhum.</p>
 
   <label id="drop" class="drop" tabindex="0">
-    <input id="file" type="file" accept=".srt,.sbv,.ass,.ytt,.srv3,.json3,.json,.txt" multiple hidden>
+    <input id="file" type="file" multiple hidden>
     <span class="big">Solte os arquivos aqui</span>
     <span>ou clique para escolher</span>
   </label>
@@ -26,7 +26,11 @@
         <option value=".srt">.srt (texto simples)</option>
       </select>
     </label>
-    <label class="dedup" title="Para .ytt e .json3: um .ytt feito de um .ass com animação (fade, movimento, karaokê, várias sombras) repete a mesma frase em centenas de linhas, uma por quadro. Com isto ligado, as repetições viram uma linha por frase, com os tempos acertados. Bom para tirar um .srt limpo.">
+    <label class="check" title="O YouTube não deixa a sombra/contorno ficar transparente (só a cor #222222), então no fade o texto some e o contorno fica, deixando um rastro. Com isto ligado, quando a opacidade do texto fica abaixo da porcentagem a sombra/contorno é removida e o texto some sozinho. Desligado, o resultado é igual ao YTSubConverter original.">
+      <input type="checkbox" id="fadeShadows"> No fade, tirar sombra/contorno abaixo de
+      <input type="number" id="fadeCutoff" value="45" min="1" max="100" step="1">% de opacidade
+    </label>
+    <label class="check" title="Para .ytt e .json3: um .ytt feito de um .ass com animação (fade, movimento, karaokê, várias sombras) repete a mesma frase em centenas de linhas, uma por quadro. Com isto ligado, as repetições viram uma linha por frase, com os tempos acertados. Bom para tirar um .srt limpo.">
       <input type="checkbox" id="fixDuplication"> Corrigir duplicação massiva (.ytt/.json3)
     </label>
   </div>

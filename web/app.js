@@ -6,6 +6,7 @@ import { YttPreview } from './preview.js';
 const drop = document.getElementById('drop');
 const input = document.getElementById('file');
 const format = document.getElementById('format');
+const fadeShadows = document.getElementById('fadeShadows');
 const results = document.getElementById('results');
 const preview = new YttPreview(document.getElementById('preview'));
 
@@ -29,6 +30,7 @@ function extOf(name) {
  * @returns {Promise<{download: {name: string, blob: Blob}, ytt: string | Uint8Array}>}
  */
 async function convertFile(file, targetExt) {
+  const options = { fadeDarkShadows: fadeShadows.checked };
   const fullExt = extOf(file.name);
   const ext = fullExt.replace(/\.txt$/, '') || fullExt;
   // Um .txt qualquer ainda pode ser json3 ou .ytt: loadDocument reconhece pelo conteúdo.
@@ -36,13 +38,14 @@ async function convertFile(file, targetExt) {
   const content = new Uint8Array(await file.arrayBuffer());
   const isYtt = YTT_EXTENSIONS.includes(ext);
 
-  // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio.
-  if (isYtt && YTT_EXTENSIONS.includes(targetExt)) {
+  // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio (a não ser que a opção do fade
+  // esteja ligada, que muda as sombras).
+  if (isYtt && YTT_EXTENSIONS.includes(targetExt) && !options.fadeDarkShadows) {
     return { download: { name: file.name, blob: file }, ytt: content };
   }
 
   const name = file.name.slice(0, file.name.length - fullExt.length) + targetExt;
-  const text = convertDocument(await loadDocument('x' + ext, content), targetExt).save({ bom: true });
+  const text = convertDocument(await loadDocument('x' + ext, content), targetExt, options).save({ bom: true });
   // O BOM vem como \uFEFF no texto; o Blob grava em UTF-8.
   const download = { name, blob: new Blob([text], { type: 'text/plain;charset=utf-8' }) };
 
@@ -50,7 +53,7 @@ async function convertFile(file, targetExt) {
   if (YTT_EXTENSIONS.includes(targetExt)) ytt = text;
   else if (isYtt) ytt = content;
   // save() altera o documento, então o .ytt do preview sai de uma leitura nova.
-  else ytt = convertDocument(await loadDocument('x' + ext, content), '.ytt').save();
+  else ytt = convertDocument(await loadDocument('x' + ext, content), '.ytt', options).save();
   return { download, ytt };
 }
 

@@ -18,7 +18,8 @@ h1 { font-size: 1.6rem; margin: 0 0 8px; }
   text-align: center; color: var(--muted); transition: border-color .15s, background .15s; }
 .drop .big { font-size: 1.25rem; font-weight: 600; color: var(--fg); }
 .drop:hover, .drop:focus, .drop.over { border-color: var(--accent); outline: none; }
-.options { margin: 16px 0; }
+.options { margin: 16px 0; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.options .check { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 select { font: inherit; padding: 4px 8px; margin-left: 6px; border-radius: 6px;
   border: 1px solid var(--line); background: var(--card); color: var(--fg); }
 #results { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }

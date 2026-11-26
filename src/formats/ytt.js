@@ -13,12 +13,22 @@ const ZERO_WIDTH_SPACE = '​';
 // Surrounded with zwsp's so it can be recognized and removed during reverse conversion
 const PADDING_SPACE = '​ ​';
 
+// fadeDarkShadows: maior componente de cor para uma sombra contar como "quase preta" (#404040 ou mais escura)
+const NEAR_BLACK_MAX = 0x40;
+
 const REFERENCE_VIDEO_DIMENSIONS = { width: 1280, height: 720 };
 
 export class YttDocument extends SubtitleDocument {
-  /** @param {SubtitleDocument} [doc] */
-  constructor(doc) {
+  /**
+   * @param {SubtitleDocument} [doc]
+   * @param {{fadeDarkShadows?: boolean}} [options] fadeDarkShadows: extensão do port (não existe no original).
+   *   O YouTube desenha opaca toda sombra/contorno com "ec"; só a cor padrão #222222 acompanha a opacidade do
+   *   texto. Com a opção, sombras quase pretas em texto transparente (passos de um fade) viram #222222 com a
+   *   opacidade do texto, para sumirem junto em vez de deixar o formato das letras em preto.
+   */
+  constructor(doc, { fadeDarkShadows = false } = {}) {
     super(doc);
+    this.fadeDarkShadows = fadeDarkShadows;
   }
 
   /**
@@ -214,6 +224,13 @@ export class YttDocument extends SubtitleDocument {
         section.foreColor = Color.fromArgbInt((section.foreColor.a << 24) | 0xfefefe);
       if (section.foreColor.a === 255) section.foreColor = changeAlpha(section.foreColor, 254);
       if (section.backColor.a === 255) section.backColor = changeAlpha(section.backColor, 254);
+
+      if (this.fadeDarkShadows && section.foreColor.a < 254) {
+        for (const [type, color] of [...section.shadowColors]) {
+          if (color.a > 0 && Math.max(color.r, color.g, color.b) <= NEAR_BLACK_MAX)
+            section.shadowColors.set(type, Color.fromArgb(section.foreColor.a, 0x22, 0x22, 0x22));
+        }
+      }
 
       for (const [type, color] of [...section.shadowColors]) {
         if (color.a === 0) section.shadowColors.delete(type);

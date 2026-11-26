@@ -55,6 +55,25 @@ primeira versão; no preview ficou pior (o contorno colorido virava cinza).
 Sombra transparente que não vem de transição (ex.: estilo com sombra `&H80000000` e texto opaco) continua como no
 original (opaca), porque a opacidade dela está mais perto da opaca do que da do texto.
 
+## Destaque × transição (\k × \t)
+
+No .ytt o karaokê com troca gradual (`\ytkt(Fade)`, `\kf`) é tecnicamente uma troca de cor no tempo, igual a um
+`\t(\c)`. No C# a troca do karaokê ia até a cor fixa do `\1c` e era aplicada por último, então apagava o `\t` do
+mesmo trecho. Agora a troca do karaokê vai do `\2c` até a cor que o trecho tem naquele momento, com os `\t` já
+aplicados (`KaraokeColorAnimation`): o destaque modifica a transição em vez de cancelar.
+
+- `\kf` e `\K` (o C# ignorava: a sílaba ficava sem duração) enchem a sílaba durante a duração dela, do `\2c` ao
+  `\1c` (o .ytt não tem o preenchimento da esquerda para a direita).
+- `\ko`: a sílaba ainda não cantada fica sem contorno.
+- `\k`, `\kf` e `\ko` podem se misturar na mesma linha.
+- Recuperação (.ytt → .ass): quando a primeira troca de cada letra anda em sequência e as seguintes acontecem
+  juntas em todas as letras, sai `\k` + um `\t` da linha, em vez de um `\t` por letra.
+
+## Layer
+
+O `Layer` do .ass decide quem fica por cima (o maior). No .ytt fica por cima o `<p>` que vem depois; o C# ordenava só
+pelo início. Agora, quando há linhas fora do Layer 0, os `<p>` vão por Layer e, dentro dele, pelo início.
+
 ## Onde está no código
 
 - `src/formats/ass/karaokeTypes.js`, `applyFadeInDecorationOpacity`: regra 3 no `\ytkt(Fade)`.
@@ -69,5 +88,4 @@ testes golden continuarem iguais ao C#). Na página é a caixa "Hierarquia de ta
 ## Ainda não coberto
 
 - `\t(\1a)` sozinho (sem `\3a`/`\4a`) continua só no texto, como no .ass: no Aegisub a sombra também fica.
-- `\t` de cor junto com `\ytkt(Fade)` no mesmo trecho: as duas animações escrevem a cor e a última ganha.
 - `\ytReset`/`\breakout` e o karaokê com gradiente (notas GradientKCEffect) são ideias para depois.

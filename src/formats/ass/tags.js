@@ -431,8 +431,21 @@ const karaokeTag = {
   handle(context, arg) {
     const centiSeconds = tryParseInt(arg) ?? 0;
     context.section.duration = centiSeconds * 10;
+    context.section.karaokeTag = 'k';
   },
 };
+
+// Extensão do port: o C# só tinha \\k e ignorava \\kf, \\K e \\ko (a sílaba ficava sem duração e o karaokê
+// da linha desandava quando eles se misturavam com \\k). Cada sílaba guarda o tipo dela.
+const karaokeFillTag = { tag: 'kf', affectsWholeLine: false, handle: (context, arg) => setKaraoke(context, arg, 'kf') };
+const karaokeFillUpperTag = { tag: 'K', affectsWholeLine: false, handle: (context, arg) => setKaraoke(context, arg, 'kf') };
+const karaokeOutlineTag = { tag: 'ko', affectsWholeLine: false, handle: (context, arg) => setKaraoke(context, arg, 'ko') };
+
+function setKaraoke(context, arg, type) {
+  const centiSeconds = tryParseInt(arg) ?? 0;
+  context.section.duration = centiSeconds * 10;
+  context.section.karaokeTag = type;
+}
 
 const karaokeTypeTag = {
   tag: 'ytkt',
@@ -833,6 +846,9 @@ export function createTagHandlers() {
     horizontalTextDirectionTag,
     boolTag('i', 'italic'),
     karaokeTag,
+    karaokeFillTag,
+    karaokeFillUpperTag,
+    karaokeOutlineTag,
     karaokeTypeTag,
     moveTag,
     outlineAlphaTag,

@@ -1,19 +1,19 @@
 // Port of the reading part of Formats/Ass/AssDocument.cs.
 // The writing part (AssDocument(SubtitleDocument) and Save()) is in assWriter.js.
 
-import { ForeColorAnimation, SecondaryColorAnimation } from '../../animations/animations.js';
+import { ForeColorAnimation, KaraokeColorAnimation, SecondaryColorAnimation } from '../../animations/animations.js';
 import { expandAnimations } from '../../animations/animator.js';
 import { LineMergeType, RubyPart, ShadowType } from '../../enums.js';
 import { Color } from '../../util/color.js';
 import { decodeText, readLines, SortedNumberMap, splitMax } from '../../util/misc.js';
 import { f32 } from '../../util/numbers.js';
-import { roundTimeToFrameCenter } from '../../util/time.js';
+import { minTime, roundTimeToFrameCenter } from '../../util/time.js';
 import { SubtitleDocument } from '../subtitleDocument.js';
 import { AssDialogue, AssDocumentSection, AssLine, AssSection, AssStyle, AssStyleOptions, loadStyleOptionsFromString } from './assModel.js';
 import { createAssDocumentFrom, saveAssDocument } from './assWriter.js';
 import { DEFAULT_STYLE_OPTIONS_XML } from './defaultStyleOptions.js';
 import { DEFAULT_STYLES_ASS } from './defaultStyles.js';
-import { SimpleKaraokeType } from './karaokeTypes.js';
+import { colorTransforms, SimpleKaraokeType } from './karaokeTypes.js';
 import { createTagHandlers } from './tags.js';
 
 /**
@@ -38,7 +38,8 @@ const ZERO_WIDTH_SPACE = '​';
 
 // .NET \w: letters, combining marks, decimal digits and connector punctuation
 const ITEM_LINE_RE = /^([\p{L}\p{Mn}\p{Nd}\p{Pc} ]+):\s*(.+)$/u;
-const TAG_RE = /\\(?<tag>fn|r|\d?[a-z]+)\s*(?<arg>\([^()]*(?:\)|$)|[^\\()]*)/g;
+// Extensão do port: \\K (maiúsculo, igual a \\kf) também é lido; o C# só via minúsculas e o ignorava.
+const TAG_RE = /\\(?<tag>fn|r|K|\d?[a-z]+)\s*(?<arg>\([^()]*(?:\)|$)|[^\\()]*)/g;
 
 export class AssDocument extends SubtitleDocument {
   /**
@@ -169,7 +170,7 @@ export class AssDocument extends SubtitleDocument {
     for (const tagGroupMatch of text.matchAll(/\{(.*?)\}/g)) {
       const end = tagGroupMatch.index;
 
-      if (end > start || (context.section.duration > 0 && /\\k\s*\d+/.test(tagGroupMatch[1]))) {
+      if (end > start || (context.section.duration > 0 && /\\(?:k[fo]?|K)\s*\d+/.test(tagGroupMatch[1]))) {
         context.section.text = end === start ? ZERO_WIDTH_SPACE : resolveEscapeSequences(text.substring(start, end));
         line.sections.push(context.section);
 
@@ -291,9 +292,23 @@ export class AssDocument extends SubtitleDocument {
       section.animations = section.animations.filter((a) => !(a instanceof SecondaryColorAnimation));
     }
 
+    // Extensão do port: \\kf/\\K enchem a sílaba ao longo da duração dela. O .ytt não tem o preenchimento da
+    // esquerda para a direita, então a sílaba que está sendo cantada vai da cor do \\2c até a do \\1c durante a
+    // duração dela (as sílabas com \\k trocam de cor de uma vez, como antes).
+    const prevNumActiveSections = stepIdx > 0 ? activeSectionsPerStep.values[stepIdx - 1] : 0;
+    for (const section of stepLine.sections.slice(prevNumActiveSections, numActiveSections)) {
+      const original = originalLine.sections[stepLine.sections.indexOf(section)];
+      if (original.karaokeTag !== 'kf' || original.duration <= 0 || section.foreColor.equals(section.secondaryColor)) continue;
+      const fillEnd = minTime(roundTimeToFrameCenter(startTime + original.duration), endTime);
+      if (fillEnd > startTime)
+        section.animations.push(new KaraokeColorAnimation(startTime, section.secondaryColor, fillEnd, section.foreColor, 1, colorTransforms(section)));
+    }
+
     for (const section of stepLine.sections.slice(numActiveSections)) {
       section.duration = 0;
       section.startOffset = 0;
+      // \\ko: a sílaba ainda não cantada fica sem contorno
+      if (section.karaokeTag === 'ko') section.shadowColors.delete(ShadowType.Glow);
 
       section.foreColor = section.secondaryColor;
 
@@ -449,6 +464,7 @@ function canUseNativeKaraoke(line) {
         s.currentWordOutlineColor.isEmpty &&
         s.currentWordShadowColor.isEmpty &&
         s.animations.length === 0 &&
+        s.karaokeTag === 'k' &&
         s.duration !== 0,
     )
   );

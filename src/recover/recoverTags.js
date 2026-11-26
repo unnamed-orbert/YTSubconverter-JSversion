@@ -553,20 +553,52 @@ function analyzeTrack(allFrames, doc, depth = 0) {
       if (before.length > 0 && after.length > 0) return [...analyzeTrack(before, doc, depth + 1), ...analyzeTrack(after, doc, depth + 1)];
     }
     void sig;
+    // Karaokê seguido de um \\t da linha toda: a primeira troca de cada letra anda em sequência (sílabas) e as
+    // seguintes acontecem juntas em todas as letras. O \\k e o \\t são de classes diferentes (destaque e transição)
+    // e aqui ficam separados, em vez de tudo virar um \\t por letra.
+    const restLen = Math.max(...withChanges.map((j) => timelines[j].transitions.length)) - 1;
+    const longest = withChanges.find((j) => timelines[j].transitions.length === restLen + 1);
+    const rest = (j, skip) => ({ transitions: timelines[j].transitions.slice(skip) });
+    const sungChars = withChanges.filter((j) => timelines[j].transitions.length === restLen + 1);
+    const firstT1s = sungChars.map((j) => timelines[j].transitions[0].t1);
+    const karaokeThenLine =
+      !single && restLen >= 1 && withChanges.length === visible.length && sungChars.length >= 2 &&
+      firstT1s.every((t, k) => k === 0 || t >= firstT1s[k - 1] - 20) &&
+      new Set(firstT1s.map((t) => Math.round(t / 40))).size >= 2 &&
+      withChanges.every((j) => {
+        const n = timelines[j].transitions.length;
+        // sílaba cantada já no começo: só tem as trocas da linha
+        return (n === restLen + 1 || n === restLen) && sameTransitionTimes(rest(j, n - restLen), rest(longest, 1));
+      }) &&
+      Math.max(...firstT1s) < timelines[longest].transitions[1].t1;
     if (sameTimes) mode = 'line';
     else if (monotonic && distinctStarts >= 2) mode = 'karaoke';
-    else mode = 'chars';
+    else if (karaokeThenLine) {
+      mode = 'karaoke';
+      event.karaokeThenTransform = true;
+    } else mode = 'chars';
   }
 
+  if (event.karaokeThenTransform) {
+    // As letras cantadas já no começo não têm a troca do karaokê: só as trocas da linha
+    const restLen = Math.max(...withChanges.map((j) => timelines[j].transitions.length)) - 1;
+    for (const j of withChanges) if (timelines[j].transitions.length === restLen) timelines[j].transitions.unshift(null);
+  }
   event.mode = mode;
   event.timelines = timelines;
   event.initialChars = timelines.map((t) => t.initial);
-  event.finalChars = timelines.map((t) => (t.transitions.length > 0 ? t.transitions[t.transitions.length - 1].target : t.initial));
+  // Estado final; no karaokê seguido de \\t, o estado "cantado" é o da primeira troca (as outras viram \\t)
+  event.finalChars = timelines.map((t) => {
+    if (t.transitions.length === 0) return t.initial;
+    if (event.karaokeThenTransform) return t.transitions[0]?.target ?? t.initial;
+    return t.transitions[t.transitions.length - 1].target;
+  });
   if (mode === 'karaoke') {
-    const changes = withChanges.map((j) => ({ j, t1: timelines[j].transitions[0].t1, t2: timelines[j].transitions[0].t2 }));
+    const sung = event.karaokeThenTransform ? withChanges.filter((j) => timelines[j].transitions[0] != null) : withChanges;
+    const changes = sung.map((j) => ({ j, t1: timelines[j].transitions[0].t1, t2: timelines[j].transitions[0].t2 }));
     const gradual = median(changes.map((c) => c.t2 - c.t1)) > ANIM_FRAME_MAX_MS;
     event.karaoke = buildKaraoke(event, changes, gradual);
-    unifySungState(event, withChanges);
+    unifySungState(event, event.karaokeThenTransform ? withChanges.filter((j) => timelines[j].transitions[0] != null) : withChanges);
   } else if (mode === 'static') {
     event.karaoke = nativeKaraoke(event);
   }
@@ -1622,7 +1654,7 @@ function writeAss(doc, events) {
     // inicial, com um \t por transição.
     const animated = e.mode === 'line' || e.mode === 'chars';
     const baseOf = (j) => (animated ? e.timelines[j].initial : chars[j]);
-    const transOf = (j) => (animated ? e.timelines[j].transitions : []);
+    const transOf = (j) => (animated ? e.timelines[j].transitions : e.karaokeThenTransform ? e.timelines[j].transitions.slice(1) : []);
     const transKey = (j) => transOf(j).map((t) => `${round10(t.t1 - e.start)},${round10(t.t2 - e.start)},${t.accel ?? 1},${transformTags(charTagState(baseOf(j), secondary, style), charTagState(t.target, secondary, style))}`).join('|');
 
     let prev = styleState(style);
@@ -1659,10 +1691,11 @@ function writeAss(doc, events) {
         const accel = t.accel ? `${formatNumber(t.accel)},` : '';
         const text = full ? `\\t(${accel}${tagText})` : `\\t(${t1},${t2},${accel}${tagText})`;
         builder._pendingTags += text;
-        if (e.mode === 'line' && !lineReasonDone) addTag('t', text, `todas as letras mudam juntas de ${t1} ms a ${t2} ms`);
+        if ((e.mode === 'line' || e.karaokeThenTransform) && !lineReasonDone)
+          addTag('t', text, `${e.karaokeThenTransform ? 'depois do karaokê, ' : ''}todas as letras mudam juntas de ${t1} ms a ${t2} ms`);
         if (e.mode === 'chars') charTransforms++;
       }
-      if (e.mode === 'line') lineReasonDone = lineReasonDone || transitions.length > 0;
+      if (e.mode === 'line' || e.karaokeThenTransform) lineReasonDone = lineReasonDone || transitions.length > 0;
       prev = base;
       prevAnimated = transitions.length > 0 ? animatedChannels(base, transitions.map((t) => charTagState(t.target, secondary, style))) : null;
 

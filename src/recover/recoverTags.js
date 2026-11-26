@@ -1071,6 +1071,9 @@ const eventCenter = (e, doc) => e.basePos ?? e.move?.from ?? doc.getDefaultPosit
  * Cópias que se sobrepõem no tempo formam um grupo; o grupo que termina quando o texto aparece é a entrada e o
  * que começa quando ele some é a saída.
  */
+/** Mesmo texto, ignorando espaços nas pontas (a sílaba final do karaokê costuma levar um espaço) e ZWSP. */
+const sameWords = (a, b) => a.replace(/[\u200B\s]+/g, ' ').trim() === b.replace(/[\u200B\s]+/g, ' ').trim();
+
 function detectChroma(events, doc) {
   const candidates = events.filter(isChromaCandidate);
   if (candidates.length === 0) return;
@@ -1079,8 +1082,9 @@ function detectChroma(events, doc) {
   const clusters = [];
   const byText = new Map();
   for (const c of [...candidates].sort((x, y) => x.start - y.start)) {
-    const list = byText.get(c.text) ?? [];
-    let cluster = list.find((cl) => c.start < cl.end && cl.start < c.end);
+    const key = c.text.replace(/[\u200B\s]+/g, ' ').trim();
+    const list = byText.get(key) ?? [];
+    let cluster = list.find((cl) => c.start <= cl.end + 2 && cl.start < c.end);
     if (!cluster) {
       cluster = { text: c.text, start: c.start, end: c.end, members: [] };
       list.push(cluster);
@@ -1088,7 +1092,7 @@ function detectChroma(events, doc) {
     }
     cluster.members.push(c);
     cluster.end = Math.max(cluster.end, c.end);
-    byText.set(c.text, list);
+    byText.set(key, list);
   }
 
   const mains = events.filter((e) => !isChromaCandidate(e) || hasShadowOrBox(e));
@@ -1129,7 +1133,7 @@ function detectChroma(events, doc) {
     }
     const near = (m) => {
       const p = eventCenter(m, doc);
-      return m.text === cluster.text && !m.removed && Math.hypot(p.x - center.x, p.y - center.y) <= 40;
+      return sameWords(m.text, cluster.text) && !m.removed && Math.hypot(p.x - center.x, p.y - center.y) <= 40;
     };
     const ins = mains.filter((m) => near(m) && !cluster.members.includes(m) && Math.abs(m.start - cluster.end) <= 100 && m.start >= cluster.start);
     const outs = mains.filter((m) => near(m) && !cluster.members.includes(m) && Math.abs(cluster.start - m.end) <= 100 && m.end <= cluster.end);

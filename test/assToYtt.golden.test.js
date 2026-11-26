@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { YttDocument } from '../src/formats/ytt.js';
+import { YttDocument, insertLineBreaks } from '../src/formats/ytt.js';
 
 const dir = fileURLToPath(new URL('./files/ass/', import.meta.url));
 const assIndex = fileURLToPath(new URL('../src/formats/ass/index.js', import.meta.url));
@@ -20,6 +20,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.ass')).sort()) {
     const assDoc = ass.loadAssDocument(readFileSync(join(dir, file)), { styleOptions });
     const actual = new YttDocument(assDoc).save();
     const expected = readFileSync(join(dir, `${name}.ytt`), 'utf8').replace(/^﻿/, '');
-    assert.equal(actual, expected);
+    // The port breaks the output into lines (insertLineBreaks); the C# files are on a single line.
+    assert.equal(actual, insertLineBreaks(expected));
   });
 }

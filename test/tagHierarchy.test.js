@@ -103,3 +103,15 @@ test('\\fade com 2 valores funciona como \\fad (libass), também com karaokê', 
   assert.equal(fade, fad);
   assert.ok(pens(fade).some((p) => fo(p) > 0 && fo(p) < 200), 'tem quadros do fade');
 });
+
+test('no fade só o contorno vai para a cor do texto; a sombra deslocada não vira um borrão claro', async () => {
+  const ytt = await convert('Dialogue: 0,0:00:00.00,0:00:03.00,YTGlowSoftShadow,,0,0,0,,{\\fad(0,2000)}Duas\n', true);
+  const fading = pens(ytt).filter((p) => /et=/.test(p) && fo(p) < 200);
+  const soft = fading.filter((p) => /et="4"/.test(p));
+  const glow = fading.filter((p) => /et="3"/.test(p));
+  assert.ok(soft.length > 2 && glow.length > 2);
+  // Sombra suave preta: sombra automática (#222222, sem "ec"), nunca clara
+  for (const p of soft) assert.ok(!/ec=/.test(p), p);
+  // Contorno: "ec" clareando na direção do texto branco
+  assert.ok(glow.some((p) => /ec="#(?!000000)[0-9A-F]{6}"/.test(p)));
+});

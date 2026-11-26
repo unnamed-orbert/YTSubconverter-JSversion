@@ -253,8 +253,9 @@ export class YttDocument extends SubtitleDocument {
    * Hierarquia de tags: o .ytt não tem opacidade de sombra. Com "ec" a sombra é opaca, mas a cor dela pode mudar a cada
    * quadro; sem "ec" ela é #222222 com a opacidade do texto (fo). Uma sombra que deveria estar transparente (fade,
    * karaokê \\ytkt(Fade), \\t de alpha: a opacidade dela está mais perto da do texto do que da opaca) é tratada assim:
-   * - 'cor' (padrão): o "ec" vai da cor da sombra até a cor do texto (a cor em destaque) enquanto o texto cai até o
-   *   corte (40%); abaixo do corte a sombra sai e o texto some sozinho pela opacidade, como o fade do libass.
+   * - 'cor' (padrão): o "ec" do contorno (Glow) vai da cor dele até a cor do texto (a cor em destaque) enquanto o
+   *   texto cai até o corte (40%); as sombras deslocadas (suave, dura, relevo) escuras acompanham o texto (#222222)
+   *   e as coloridas ficam como estão; abaixo do corte tudo sai e o texto some sozinho, como o fade do libass.
    * - 'cinza': a sombra vira a automática (#222222 acompanhando o fo); as coloridas só abaixo do corte.
    */
   letShadowsFollowText(section) {
@@ -269,7 +270,14 @@ export class YttDocument extends SubtitleDocument {
           section.shadowColors.delete(type);
           continue;
         }
-        // r = 1 na sombra opaca, 0 no corte: a sombra chega à cor do texto exatamente no corte
+        if (type !== ShadowType.Glow) {
+          // Só o contorno (Glow) vai para a cor do texto. A sombra suave/dura/relevo deslocada na cor do texto vira
+          // um borrão claro em volta das letras ("rastro de desfoque"): a escura acompanha o texto (#222222 com o
+          // fo dele, que é quase a mesma cor) e a colorida fica como está até o corte.
+          if (isNearAutoEdgeColor(color)) section.shadowColors.set(type, Color.fromArgb(textAlpha, 0x22, 0x22, 0x22));
+          continue;
+        }
+        // r = 1 na sombra opaca, 0 no corte: o contorno chega à cor do texto exatamente no corte
         const r = Math.max(0, Math.min(1, (color.a - cutoff) / (254 - cutoff)));
         const mix = (from, to) => Math.round(to + (from - to) * r);
         const text = section.foreColor;

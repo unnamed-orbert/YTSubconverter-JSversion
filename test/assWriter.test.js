@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { AssDocument, AssLine, AssSection, loadAssDocument, loadStyleOptions } from '../src/formats/ass/index.js';
 import { AssLineContentBuilder, Float, formatTimestamp } from '../src/formats/ass/assWriter.js';
 import { SrtDocument } from '../src/formats/srt.js';
-import { YttDocument } from '../src/formats/ytt.js';
+import { YttDocument, insertLineBreaks } from '../src/formats/ytt.js';
 import { convertDocument } from '../src/convert.js';
 import { AnchorPoint, RubyPart, ShadowType } from '../src/enums.js';
 import { Color } from '../src/util/color.js';
@@ -261,6 +261,6 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.ytt')).sort()) {
     const input = readFileSync(join(dir, file), 'utf8').replace(/^﻿/, '');
     const written = AssDocument.fromSubtitleDocument(yttReader(input)).save();
     const actual = new YttDocument(loadAssDocument(written)).save();
-    assert.equal(actual, roundYttTimestamps(input));
+    assert.equal(actual, insertLineBreaks(roundYttTimestamps(input)));
   });
 }

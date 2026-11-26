@@ -131,7 +131,7 @@ export class YttDocument extends SubtitleDocument {
     this.writeBody(w, positions, windowStyles, pens);
     w.end();
 
-    return (bom ? '﻿' : '') + w.toString();
+    return (bom ? '﻿' : '') + insertLineBreaks(w.toString());
   }
 
   // ---------------------------------------------------------------- enhancements
@@ -599,6 +599,19 @@ function getRubyPart(id) {
     case 5: return RubyPart.TextAfter;
     default: return RubyPart.None;
   }
+}
+
+/**
+ * Quebra a saída em linhas para ficar legível: uma linha por <wp>, <ws>, <pen> e <p>.
+ * Só toca no que fica entre elementos (no texto das legendas "<" sempre sai como &lt;), então não muda o conteúdo.
+ * Extensão do port: o original em C# escreve tudo numa linha só.
+ */
+export function insertLineBreaks(text) {
+  text = text.replace(/\/><wp/g, '/>\n<wp');
+  text = text.replace(/\/><ws/g, '/>\n<ws');
+  text = text.replace(/\/><pen/g, '/>\n<pen');
+  text = text.replace(/s><\/p><p t/g, 's></p>\n<p t');
+  return text;
 }
 
 /** YouTube's upload breaks zero-duration karaoke segments, so give them 1ms instead. */

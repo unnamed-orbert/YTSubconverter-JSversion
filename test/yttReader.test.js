@@ -8,7 +8,7 @@ import { Color } from '../src/util/color.js';
 import { parseXml, XmlNodeType } from '../src/util/xml.js';
 import { SubtitleDocument } from '../src/formats/subtitleDocument.js';
 import { SrtDocument } from '../src/formats/srt.js';
-import { YttDocument } from '../src/formats/ytt.js';
+import { YttDocument, insertLineBreaks } from '../src/formats/ytt.js';
 import { loadDocument } from '../src/convert.js';
 
 const filesDir = fileURLToPath(new URL('./files/ass/', import.meta.url));
@@ -25,7 +25,14 @@ for (const file of readdirSync(filesDir).filter((f) => f.endsWith('.ytt'))) {
     const original = readFileSync(filesDir + file);
     const doc = YttDocument.parse(original);
     const resaved = new YttDocument(doc).save({ bom: original[0] === 0xef });
-    assert.equal(resaved, original.toString('utf8'));
+    assert.equal(resaved, insertLineBreaks(original.toString('utf8')));
+  });
+
+  test(`ida e volta: ${file} com quebras de linha é lido e reescrito igual`, () => {
+    const withBreaks = new YttDocument(YttDocument.parse(readFileSync(filesDir + file))).save();
+    assert.ok(withBreaks.includes('\n<pen'), 'a saída deve ter quebras de linha');
+    const again = new YttDocument(YttDocument.parse(withBreaks)).save();
+    assert.equal(again, withBreaks);
   });
 }
 

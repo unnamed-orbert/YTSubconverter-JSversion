@@ -1,0 +1,148 @@
+[Script Info]
+; Arquivo de demonstração: cada linha mostra uma tag ou posicionamento suportado
+; pelo ytsubconverter-js e o texto diz qual tag está sendo usada.
+; Converta com: node bin/ytsubconverter.js exemplos/demonstracao-tags.ass
+Title: Demonstração das tags
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+PlayResX: 1280
+PlayResY: 720
+YCbCr Matrix: None
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Roboto,38,&H00FFFFFF,&H00808080,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,0,2,25,25,15,1
+Style: Titulo,Roboto,40,&H0000FFFF,&H00808080,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,2,0,8,25,25,15,1
+Style: Nota,Roboto,26,&H00C0C0C0,&H00808080,&H00000000,&H00000000,0,1,0,0,100,100,0,0,1,1,0,2,25,25,15,1
+Style: YTPlain,Roboto,38,&H01FEFEFE,&HFF000000,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,25,25,15,1
+Style: YTPlainBox,Roboto,38,&H01FEFEFE,&HFF000000,&H01000000,&H00000000,0,0,0,0,100,100,0,0,3,0.01,0,2,25,25,15,1
+Style: YTGlow,Roboto,38,&H01FEFEFE,&HFF000000,&H01000000,&H01000000,0,0,0,0,100,100,0,0,1,2,0,2,25,25,15,1
+Style: YTGlowBox,Roboto,38,&H01FEFEFE,&HFF000000,&H01000000,&H01000000,0,0,0,0,100,100,0,0,3,0.01,4,2,25,25,15,1
+Style: YTSoftShadow,Roboto,38,&H01FEFEFE,&HFF000000,&H01000000,&H01000000,0,0,0,0,100,100,0,0,1,0,4,2,25,25,15,1
+Style: YTSoftShadowBox,Roboto,38,&H01FEFEFE,&HFF000000,&H01000000,&H01000000,0,0,0,0,100,100,0,0,3,0.01,4,2,25,25,15,1
+Style: YTHardShadow,Roboto,38,&H01FEFEFE,&HFF000000,&H01000000,&H01000000,0,0,0,0,100,100,0,0,1,0,4,2,25,25,15,1
+Style: YTHardShadowBox,Roboto,38,&H01FEFEFE,&HFF000000,&H01000000,&H01000000,0,0,0,0,100,100,0,0,3,0.01,4,2,25,25,15,1
+Style: YTBevel,Roboto,38,&H01FEFEFE,&HFF000000,&H01000000,&H01000000,0,0,0,0,100,100,0,0,1,0,4,2,25,25,15,1
+Style: YTBevelBox,Roboto,38,&H01FEFEFE,&HFF000000,&H01000000,&H00000000,0,0,0,0,100,100,0,0,3,0.01,4,2,25,25,15,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,,=== 1. Abertura ===
+Dialogue: 0,0:00:00.00,0:00:06.00,Titulo,,0,0,0,,{\an5\pos(640,300)\fs56}Demonstração das tags
+Dialogue: 0,0:00:00.00,0:00:06.00,Default,,0,0,0,,{\an5\pos(640,390)}Cada tela mostra um grupo de recursos.
+Dialogue: 0,0:00:00.00,0:00:06.00,Nota,,0,0,0,,{\an5\pos(640,450)}O texto de cada linha diz a tag que está sendo usada.
+
+Comment: 0,0:00:06.00,0:00:06.00,Default,,0,0,0,,=== 2. Alinhamento (\an1 a \an9) ===
+Dialogue: 0,0:00:06.00,0:00:14.00,YTSoftShadow,,0,0,0,,{\an7}\an7 topo esquerda
+Dialogue: 0,0:00:06.00,0:00:14.00,YTSoftShadow,,0,0,0,,{\an8}\an8 topo centro
+Dialogue: 0,0:00:06.00,0:00:14.00,YTSoftShadow,,0,0,0,,{\an9}\an9 topo direita
+Dialogue: 0,0:00:06.00,0:00:14.00,YTSoftShadow,,0,0,0,,{\an4}\an4 meio esquerda
+Dialogue: 0,0:00:06.00,0:00:14.00,YTSoftShadow,,0,0,0,,{\an5}\an5 meio centro
+Dialogue: 0,0:00:06.00,0:00:14.00,YTSoftShadow,,0,0,0,,{\an6}\an6 meio direita
+Dialogue: 0,0:00:06.00,0:00:14.00,YTSoftShadow,,0,0,0,,{\an1}\an1 baixo esquerda
+Dialogue: 0,0:00:06.00,0:00:14.00,YTSoftShadow,,0,0,0,,{\an2}\an2 baixo centro (padrão)
+Dialogue: 0,0:00:06.00,0:00:14.00,YTSoftShadow,,0,0,0,,{\an3}\an3 baixo direita
+
+Comment: 0,0:00:14.00,0:00:14.00,Default,,0,0,0,,=== 3. Posição e movimento ===
+Dialogue: 0,0:00:14.00,0:00:22.00,Titulo,,0,0,0,,{\pos(640,30)}Posição e movimento
+Dialogue: 0,0:00:14.00,0:00:22.00,YTGlow,,0,0,0,,{\an7\pos(60,130)}\an7\pos(60,130)
+Dialogue: 0,0:00:14.00,0:00:22.00,YTGlow,,0,0,0,,{\an9\pos(1220,130)}\an9\pos(1220,130)
+Dialogue: 0,0:00:14.00,0:00:22.00,YTGlow,,0,0,0,,{\an5\pos(640,230)}\an5\pos(640,230): ponto central do texto
+Dialogue: 0,0:00:14.00,0:00:22.00,YTSoftShadow,,0,0,0,,{\an5\move(200,340,1080,340)}\move(200,340,1080,340)
+Dialogue: 0,0:00:14.00,0:00:22.00,YTSoftShadow,,0,0,0,,{\an5\move(1080,440,200,520,2000,6000)}\move(...,2000,6000): só entre 2 s e 6 s
+Dialogue: 0,0:00:14.00,0:00:22.00,Nota,,0,0,0,,{\an2\pos(640,690)}Coordenadas na resolução do script (PlayResX/PlayResY = 1280x720)
+
+Comment: 0,0:00:22.00,0:00:22.00,Default,,0,0,0,,=== 4. Formatação, fontes e tamanho ===
+Dialogue: 0,0:00:22.00,0:00:30.00,Titulo,,0,0,0,,{\pos(640,30)}Formatação, fontes e tamanho
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an4\pos(60,120)}{\b1}\b1 negrito{\b0}   {\i1}\i1 itálico{\i0}   {\u1}\u1 sublinhado{\u0}   {\b1\i1\u1}tudo junto
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an4\pos(60,180)}\fnRoboto (padrão)
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an4\pos(60,230)\fnCourier New}\fnCourier New
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an4\pos(60,280)\fnTimes New Roman}\fnTimes New Roman
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an4\pos(60,330)\fnLucida Console}\fnLucida Console
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an4\pos(60,380)\fnComic Sans MS}\fnComic Sans MS
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an4\pos(60,430)\fnMonotype Corsiva}\fnMonotype Corsiva
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an4\pos(60,480)\fnCarrois Gothic SC}\fnCarrois Gothic SC
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an6\pos(1220,230)\fs24}\fs24 pequeno
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an6\pos(1220,300)\fs38}\fs38 normal
+Dialogue: 0,0:00:22.00,0:00:30.00,YTGlow,,0,0,0,,{\an6\pos(1220,390)\fs60}\fs60 grande
+Dialogue: 0,0:00:22.00,0:00:30.00,Nota,,0,0,0,,{\an2\pos(640,690)}O YouTube só tem estas 7 fontes; outras viram Roboto
+
+Comment: 0,0:00:30.00,0:00:30.00,Default,,0,0,0,,=== 5. Cores e transparência ===
+Dialogue: 0,0:00:30.00,0:00:38.00,Titulo,,0,0,0,,{\pos(640,30)}Cores e transparência (&HBBGGRR&)
+Dialogue: 0,0:00:30.00,0:00:38.00,YTGlow,,0,0,0,,{\an4\pos(60,120)}{\c&H0000FF&}\c vermelho {\1c&H00FF00&}\1c verde {\c&HFF0000&}\c azul {\c&H00FFFF&}\c amarelo
+Dialogue: 0,0:00:30.00,0:00:38.00,YTGlow,,0,0,0,,{\an4\pos(60,190)\3c&H0000FF&}\3c cor do contorno (vermelho)
+Dialogue: 0,0:00:30.00,0:00:38.00,YTSoftShadow,,0,0,0,,{\an4\pos(60,260)\4c&HFF8000&}\4c cor da sombra (azul)
+Dialogue: 0,0:00:30.00,0:00:38.00,YTPlainBox,,0,0,0,,{\an4\pos(60,330)\3c&H800000&}\3c em estilo com caixa = cor do fundo
+Dialogue: 0,0:00:30.00,0:00:38.00,YTGlow,,0,0,0,,{\an4\pos(60,400)}{\alpha&H00&}\alpha&H00& {\alpha&H80&}\alpha&H80& {\alpha&HC0&}\alpha&HC0&
+Dialogue: 0,0:00:30.00,0:00:38.00,YTGlow,,0,0,0,,{\an4\pos(60,470)\1a&H80&}\1a&H80&: só o texto meio transparente
+Dialogue: 0,0:00:30.00,0:00:38.00,YTGlow,,0,0,0,,{\an4\pos(60,540)\3c&H00FFFF&\3a&H80&}\3a&H80&: contorno meio transparente
+Dialogue: 0,0:00:30.00,0:00:38.00,YTSoftShadowBox,,0,0,0,,{\an4\pos(60,610)\3c&H404040&\4a&H00&\4c&H0000FF&}\4a e \4c: sombra vermelha opaca, com caixa
+
+Comment: 0,0:00:38.00,0:00:38.00,Default,,0,0,0,,=== 6. Estilos de sombra e contorno (nome do estilo) ===
+Dialogue: 0,0:00:38.00,0:00:46.00,Titulo,,0,0,0,,{\pos(640,30)}Sombras e contorno (pelo nome do estilo)
+Dialogue: 0,0:00:38.00,0:00:46.00,YTPlain,,0,0,0,,{\an5\pos(340,140)}YTPlain
+Dialogue: 0,0:00:38.00,0:00:46.00,YTPlainBox,,0,0,0,,{\an5\pos(940,140)}YTPlainBox
+Dialogue: 0,0:00:38.00,0:00:46.00,YTGlow,,0,0,0,,{\an5\pos(340,240)\3c&H0080FF&}YTGlow (contorno)
+Dialogue: 0,0:00:38.00,0:00:46.00,YTGlowBox,,0,0,0,,{\an5\pos(940,240)}YTGlowBox
+Dialogue: 0,0:00:38.00,0:00:46.00,YTSoftShadow,,0,0,0,,{\an5\pos(340,340)}YTSoftShadow (sombra suave)
+Dialogue: 0,0:00:38.00,0:00:46.00,YTSoftShadowBox,,0,0,0,,{\an5\pos(940,340)}YTSoftShadowBox
+Dialogue: 0,0:00:38.00,0:00:46.00,YTHardShadow,,0,0,0,,{\an5\pos(340,440)\4c&H0000C0&}YTHardShadow (sombra dura)
+Dialogue: 0,0:00:38.00,0:00:46.00,YTHardShadowBox,,0,0,0,,{\an5\pos(940,440)}YTHardShadowBox
+Dialogue: 0,0:00:38.00,0:00:46.00,YTBevel,,0,0,0,,{\an5\pos(340,540)}YTBevel (relevo)
+Dialogue: 0,0:00:38.00,0:00:46.00,YTBevelBox,,0,0,0,,{\an5\pos(940,540)}YTBevelBox
+Dialogue: 0,0:00:38.00,0:00:46.00,Nota,,0,0,0,,{\an2\pos(640,690)}Estilo com "Box" = fundo atrás do texto (BorderStyle 3)
+
+Comment: 0,0:00:46.00,0:00:46.00,Default,,0,0,0,,=== 7. Fade e transformações (\t) ===
+Dialogue: 0,0:00:46.00,0:00:56.00,Titulo,,0,0,0,,{\pos(640,30)}Fade e transformação (\t)
+Dialogue: 0,0:00:46.00,0:00:56.00,YTSoftShadow,,0,0,0,,{\an4\pos(60,130)\fad(1500,1500)}\fad(1500,1500): aparece e some aos poucos
+Dialogue: 0,0:00:46.00,0:00:56.00,YTSoftShadow,,0,0,0,,{\an4\pos(60,200)\fade(255,0,255,0,2000,6000,9000)}\fade(255,0,255,0,2000,6000,9000)
+Dialogue: 0,0:00:46.00,0:00:56.00,YTGlow,,0,0,0,,{\an4\pos(60,270)\t(\c&H0000FF&)}\t(\c&H0000FF&): branco para vermelho
+Dialogue: 0,0:00:46.00,0:00:56.00,YTGlow,,0,0,0,,{\an4\pos(60,340)\t(2000,5000,\c&H00FFFF&\3c&HFF0000&)}\t(2000,5000,\c...\3c...): de 2 s a 5 s
+Dialogue: 0,0:00:46.00,0:00:56.00,YTGlow,,0,0,0,,{\an4\pos(60,410)\t(0,8000,\alpha&HFF&)}\t(0,8000,\alpha&HFF&): some em 8 s
+Dialogue: 0,0:00:46.00,0:00:56.00,YTGlow,,0,0,0,,{\an4\pos(60,490)\fs30\t(0,6000,\fs60)}\t(0,6000,\fs60): cresce
+Dialogue: 0,0:00:46.00,0:00:56.00,YTSoftShadow,,0,0,0,,{\an4\pos(60,580)\t(0,8000,2,\c&HFF8000&)}\t(0,8000,2,\c...): com aceleração 2
+
+Comment: 0,0:00:56.00,0:00:56.00,Default,,0,0,0,,=== 8. Karaokê ===
+Dialogue: 0,0:00:56.00,0:01:08.00,Titulo,,0,0,0,,{\pos(640,30)}Karaokê (\k em centésimos de segundo)
+Dialogue: 0,0:00:56.00,0:01:08.00,YTGlow,,0,0,0,,{\an4\pos(60,130)\2c&H808080&\2a&H00&}{\k100}\k {\k100}sim{\k100}ples: {\k100}cin{\k100}za {\k100}vi{\k100}ra {\k100}bran{\k100}co
+Dialogue: 0,0:00:56.00,0:01:08.00,YTGlow,,0,0,0,,{\an4\pos(60,210)\2a&HFF&}{\k100}\k {\k100}com {\k100}\2a&HFF&: {\k100}pa{\k100}la{\k100}vras {\k100}a{\k100}pa{\k100}re{\k100}cem
+Dialogue: 0,0:00:56.00,0:01:08.00,YTGlow,,0,0,0,,{\an4\pos(60,290)\ytktFade\c&H00FFFF&\2c&HFFFFFF&\2a&H00&}{\k100}\ytktFade: {\k100}a {\k100}cor {\k100}mu{\k100}da {\k100}com {\k100}fa{\k100}de
+Dialogue: 0,0:00:56.00,0:01:08.00,YTGlow,,0,0,0,,{\an4\pos(60,370)\ytkt(Glitch)\2a&HFF&}{\k100}\ytkt(Glitch): {\k100}le{\k100}tras {\k100}em{\k100}ba{\k100}ra{\k100}lha{\k100}das
+Dialogue: 0,0:00:56.00,0:01:08.00,YTGlow,,0,0,0,,{\an4\pos(60,450)\ytkt(Cursor,300,\c&H00FFFF&,_,\c&H0080FF&,|)\2a&HFF&}{\k100}\ytkt(Cursor,...): {\k100}cur{\k100}sor {\k100}pis{\k100}can{\k100}do
+Dialogue: 0,0:00:56.00,0:01:08.00,YTGlow,,0,0,0,,{\an4\pos(60,530)\ytkt(LCursor,300,\c&H00FFFF&,_,\c&H0080FF&,|)\2a&HFF&}{\k100}\ytkt(LCursor,...): {\k100}cur{\k100}sor {\k100}an{\k100}tes {\k100}de {\k100}can{\k100}tar
+
+Comment: 0,0:01:08.00,0:01:08.00,Default,,0,0,0,,=== 9. Efeitos do YTSubConverter: tremer e chroma ===
+Dialogue: 0,0:01:08.00,0:01:16.00,Titulo,,0,0,0,,{\pos(640,30)}Efeitos: \ytshake e \ytchroma
+Dialogue: 0,0:01:08.00,0:01:16.00,YTGlow,,0,0,0,,{\an5\pos(330,150)\ytshake}\ytshake (raio 20)
+Dialogue: 0,0:01:08.00,0:01:16.00,YTGlow,,0,0,0,,{\an5\pos(950,150)\ytshake(40,0)}\ytshake(40,0): só horizontal
+Dialogue: 0,0:01:08.00,0:01:16.00,YTGlow,,0,0,0,,{\an5\pos(330,260)\ytshake(0,30)}\ytshake(0,30): só vertical
+Dialogue: 0,0:01:08.00,0:01:16.00,YTGlow,,0,0,0,,{\an5\pos(950,260)\ytshake(30,2000,5000)}\ytshake(30,2000,5000)
+Dialogue: 0,0:01:08.00,0:01:16.00,YTPlain,,0,0,0,,{\an5\pos(330,400)\ytchroma}\ytchroma (entra e sai)
+Dialogue: 0,0:01:08.00,0:01:16.00,YTPlain,,0,0,0,,{\an5\pos(950,400)\ytchroma(1000,1000)}\ytchroma(1000,1000)
+Dialogue: 0,0:01:08.00,0:01:16.00,YTPlain,,0,0,0,,{\an5\pos(330,520)\ytchroma(0,40,800,800)}\ytchroma(0,40,...): vertical
+Dialogue: 0,0:01:08.00,0:01:16.00,YTPlain,,0,0,0,,{\an5\pos(950,520)\ytchroma(&HFF00FF&,&H00FFFF&,C0,40,0,800,800)}\ytchroma(cores,...)
+
+Comment: 0,0:01:16.00,0:01:16.00,Default,,0,0,0,,=== 10. Ruby, subscrito e sobrescrito ===
+Dialogue: 0,0:01:16.00,0:01:24.00,Titulo,,0,0,0,,{\pos(640,30)}Ruby, subscrito e sobrescrito
+Dialogue: 0,0:01:16.00,0:01:24.00,YTSoftShadow,,0,0,0,,{\an5\pos(640,170)\ytruby}\ytruby: [漢/かん][字/じ] (ruby em cima)
+Dialogue: 0,0:01:16.00,0:01:24.00,YTSoftShadow,,0,0,0,,{\an5\pos(640,290)\ytruby2}\ytruby2: [漢/かん][字/じ] (ruby embaixo)
+Dialogue: 0,0:01:16.00,0:01:24.00,YTSoftShadow,,0,0,0,,{\an5\pos(640,400)}Sintaxe: [texto/ruby] depois de \ytruby
+Dialogue: 0,0:01:16.00,0:01:24.00,YTGlow,,0,0,0,,{\an5\pos(640,500)}H{\ytsub}2{\ytsur}O  e  E = mc{\ytsup}2{\ytsur}   (\ytsub, \ytsup, \ytsur volta ao normal)
+
+Comment: 0,0:01:24.00,0:01:24.00,Default,,0,0,0,,=== 11. Texto vertical e direção ===
+Dialogue: 0,0:01:24.00,0:01:32.00,Titulo,,0,0,0,,{\pos(640,30)}Texto vertical e direção
+Dialogue: 0,0:01:24.00,0:01:32.00,YTSoftShadowBox,,0,0,0,,{\ytvert9\an9\pos(1200,110)}縦書き ytvert9
+Dialogue: 0,0:01:24.00,0:01:32.00,YTSoftShadowBox,,0,0,0,,{\ytvert7\an7\pos(80,110)}縦書き ytvert7
+Dialogue: 0,0:01:24.00,0:01:32.00,YTSoftShadowBox,,0,0,0,,{\ytvert1\an1\pos(300,640)}縦書き ytvert1
+Dialogue: 0,0:01:24.00,0:01:32.00,YTSoftShadowBox,,0,0,0,,{\ytvert3\an3\pos(980,640)}縦書き ytvert3
+Dialogue: 0,0:01:24.00,0:01:32.00,YTSoftShadowBox,,0,0,0,,{\ytvert9\an9\pos(1110,110)}{\ytpack1}2026{\ytpack0}年{\ytpack1}11{\ytpack0}月 ytpack
+Dialogue: 0,0:01:24.00,0:01:32.00,YTGlow,,0,0,0,,{\ytdir4\an5\pos(640,300)}\ytdir4: direita para esquerda
+Dialogue: 0,0:01:24.00,0:01:32.00,YTGlow,,0,0,0,,{\ytdir6\an5\pos(640,380)}\ytdir6: esquerda para direita (padrão)
+
+Comment: 0,0:01:32.00,0:01:32.00,Default,,0,0,0,,=== 12. Quebra de linha e \r ===
+Dialogue: 0,0:01:32.00,0:01:40.00,Titulo,,0,0,0,,{\pos(640,30)}Quebra de linha e reset
+Dialogue: 0,0:01:32.00,0:01:40.00,YTGlow,,0,0,0,,{\an5\pos(640,200)}Primeira linha\NSegunda linha (barra N maiúsculo)
+Dialogue: 0,0:01:32.00,0:01:40.00,YTGlow,,0,0,0,,{\an5\pos(640,380)\c&H0000FF&\b1\i1}vermelho negrito itálico {\r}\r volta ao estilo {\rYTPlainBox}\rYTPlainBox troca de estilo
+Dialogue: 0,0:01:32.00,0:01:40.00,YTGlow,,0,0,0,,{\c&H00FF00&}Sem \pos: a linha segue o \an e as margens do estilo
+Dialogue: 0,0:01:32.00,0:01:40.00,Nota,,0,0,0,,Fim da demonstração

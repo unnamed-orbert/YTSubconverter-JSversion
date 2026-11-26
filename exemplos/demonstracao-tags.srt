@@ -1,0 +1,23 @@
+1
+00:00:00,000 --> 00:00:04,000
+Demonstração das tags em .srt
+(no .srt a posição é sempre embaixo, no centro)
+
+2
+00:00:04,000 --> 00:00:08,000
+<b>negrito (tag b)</b>  <i>itálico (tag i)</i>  <u>sublinhado (tag u)</u>
+
+3
+00:00:08,000 --> 00:00:12,000
+<font color="#ff0000">vermelho (font color="#ff0000")</font>
+<font color="#00ff00">verde</font> <font color="#0080ff">azul</font> <font color="#ffff00">amarelo</font>
+
+4
+00:00:12,000 --> 00:00:16,000
+<b><i><font color="#ffa500">tudo junto: negrito, itálico e cor</font></i></b>
+e de volta ao normal
+
+5
+00:00:16,000 --> 00:00:20,000
+Duas linhas na mesma legenda:
+basta quebrar a linha no arquivo

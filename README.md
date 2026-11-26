@@ -18,6 +18,11 @@ node bin/ytsubconverter.js legenda.srt saida.ass   # .ass com os estilos YT* pad
 node bin/ytsubconverter.js legenda.json3 saida.ass # json3 do YouTube para .ass (ou saida.ytt)
 ```
 
+O formato de entrada é reconhecido **pelo conteúdo** (`src/detect.js`), não pela extensão: um json3
+baixado como `timedtext` sem extensão, ou um `.ytt` salvo como `.txt`, funcionam do mesmo jeito na CLI e
+na página. A extensão só é usada quando o conteúdo não é reconhecido. Sem saída indicada, a CLI nunca
+sobrescreve a entrada (se o nome coincidir, grava `nome.convertido.ext`).
+
 ```js
 import { SrtDocument, YttDocument } from './src/index.js';
 const ytt = new YttDocument(SrtDocument.parse(textoSrt)).save();

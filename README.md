@@ -109,6 +109,15 @@ node bin/ytsubconverter.js legenda.ytt legenda.recuperado.ass --recuperar-tags
 Estilos com mais de uma sombra vão também num `.StyleOptions.xml` para o YTSubConverter original; este port
 reconhece os tipos de sombra pelo nome do estilo quando não há StyleOptions para ele.
 
+#### Comparar o original com o refeito
+
+Depois de recuperar, o botão "Comparar original × refeito" converte o .ass recuperado de volta para .ytt e mostra
+os dois lado a lado, tocando juntos. A cada 100 ms as linhas na tela dos dois lados são emparelhadas (pelo texto e
+pela posição) e comparadas em texto, posição, cor e opacidade (`src/compare/compareYtt.js`). A página mostra a
+semelhança geral e por propriedade, uma barra de tempo com a semelhança e o tipo de diferença em cada ponto, botões
+para pular entre as diferenças e, no instante atual, o que difere em cada linha (contorno laranja: linha diferente;
+vermelho: linha que só existe de um lado). A CLI com `--recuperar-tags` também imprime a semelhança.
+
 ## Testes
 
 ```sh

@@ -6,6 +6,8 @@ import { YttPreview } from './preview.js';
 import { canFixMassiveDuplication, fixMassiveDuplication } from '../src/dedup.js';
 import { initI18n, setText, t } from './i18n.js';
 import { recoverTags } from '../src/recover/recoverTags.js';
+import { remakeYtt } from '../src/compare/remake.js';
+import { ComparePanel } from './comparePanel.js';
 
 initI18n(document.getElementById('lang'));
 
@@ -25,6 +27,7 @@ const fadeCutoff = document.getElementById('fadeCutoff');
 const fixDuplication = document.getElementById('fixDuplication');
 const results = document.getElementById('results');
 const preview = new YttPreview(document.getElementById('preview'));
+const compare = new ComparePanel(document.getElementById('compare'));
 
 const YTT_EXTENSIONS = ['.ytt', '.srv3'];
 
@@ -178,6 +181,7 @@ async function addRecoverButton(li, file) {
         setText(x, 'recoverStyleOptions');
         extra.push(x);
       }
+      extra.push(compareButton(file, content, result));
       btn.replaceWith(...extra);
       a.click();
     } catch (err) {
@@ -187,6 +191,44 @@ async function addRecoverButton(li, file) {
     }
   });
   li.append(btn, info);
+}
+
+/**
+ * Botão "Comparar original × refeito": converte o .ass recuperado de volta para .ytt (com o próprio port) e
+ * mostra os dois lado a lado, com a semelhança medida a cada 100 ms (src/compare/compareYtt.js).
+ */
+function compareButton(file, content, recovered) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'compare-btn';
+  setText(btn, 'compareBtn');
+  btn.dataset.i18nTitle = 'compareTitle';
+  btn.title = t('compareTitle');
+  let ready = null;
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    setText(btn, 'comparing');
+    try {
+      await new Promise((r) => setTimeout(r, 20));
+      if (!ready) {
+        // Leitura nova do original: a recuperação pode ter mexido nas linhas da primeira.
+        const original = await loadDocument(file.name, content);
+        const { ytt, doc } = await remakeYtt(recovered);
+        const name = baseName(file.name) + '.refeito.ytt';
+        const url = URL.createObjectURL(new Blob(['\uFEFF' + ytt], { type: 'text/plain;charset=utf-8' }));
+        ready = { original: original.lines, remade: doc.lines, download: { name, url } };
+      }
+      compare.show(ready.original, ready.remade, file.name, ready.download);
+    } catch (err) {
+      console.error(err);
+      setText(btn, 'error', { message: err.message });
+      btn.disabled = false;
+      return;
+    }
+    setText(btn, 'compareBtn');
+    btn.disabled = false;
+  });
+  return btn;
 }
 
 input.addEventListener('change', () => {

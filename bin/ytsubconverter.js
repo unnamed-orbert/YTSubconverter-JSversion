@@ -60,6 +60,15 @@ try {
       writeFileSync(xml, result.styleOptionsXml, 'utf8');
       console.log(`Estilos com várias sombras: ${xml} (StyleOptions.xml para o YTSubConverter original)`);
     }
+    // Refaz o .ytt a partir do .ass recuperado e compara com o original (a cada 100 ms).
+    const { remakeYtt } = await import('../src/compare/remake.js');
+    const { compareDocuments } = await import('../src/compare/compareYtt.js');
+    const { doc: remade } = await remakeYtt(result);
+    const cmp = compareDocuments((await loadDocument(input, content)).lines, remade.lines);
+    const p = (v) => v.toFixed(1);
+    console.log(`Semelhança do .ytt refeito com o original: ${p(cmp.similarity)}% (texto ${p(cmp.byProperty.text)}%, ` +
+      `posição ${p(cmp.byProperty.position)}%, cor ${p(cmp.byProperty.color)}%, opacidade ${p(cmp.byProperty.opacity)}%; ` +
+      `${cmp.segments.length} trechos com diferença)`);
     process.exit(0);
   }
   const outputExt = extname(output).toLowerCase();

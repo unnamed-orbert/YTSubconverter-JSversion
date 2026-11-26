@@ -22,6 +22,21 @@ const ytt = new YttDocument(SrtDocument.parse(textoSrt)).save();
 const doc = YttDocument.parse(textoYtt); // leitura de .ytt/.srv3 (desfaz os truques da escrita)
 ```
 
+## Página web
+
+`index.html` é uma página simples: arraste uma legenda `.srt`, `.sbv` ou `.ass` e baixe o `.ytt`
+(ou `.srt`). Ela roda inteiramente no navegador com os mesmos módulos de `src/`, sem servidor
+e sem enviar o arquivo para lugar nenhum.
+
+Como usa módulos JavaScript, a página precisa ser aberta por HTTP, não com duplo clique no arquivo:
+
+- **GitHub Pages:** em *Settings → Pages*, escolha *Deploy from a branch*, branch `main`, pasta `/ (root)`.
+  A página fica em `https://<usuário>.github.io/<repositório>/`.
+- **Localmente:** `npx serve .` (ou `python3 -m http.server`) na pasta do projeto e abra o endereço mostrado.
+
+`.ass` passa a funcionar na página assim que o leitor (`src/formats/ass/`) estiver no branch;
+até lá ela mostra um aviso.
+
 ## Estado
 
 | Formato | Leitura | Escrita |

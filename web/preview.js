@@ -55,10 +55,12 @@ function shadowCss(shadowColors) {
   return parts.join(', ');
 }
 
-function styleSpan(span, section) {
+const DEFAULT_BACK = 'rgba(8, 8, 8, 0.75)';
+
+function styleSpan(span, section, withBackground) {
   const s = span.style;
   s.color = css(section.foreColor, '#fff');
-  s.backgroundColor = css(section.backColor, 'rgba(8, 8, 8, 0.75)');
+  if (withBackground) s.backgroundColor = css(section.backColor, DEFAULT_BACK);
   s.fontFamily = FONT_FAMILIES[section.font] ?? FONT_FAMILIES.Roboto;
   if (section.font === 'Carrois Gothic Sc') s.fontVariant = 'small-caps';
   let scale = section.scale || 1;
@@ -74,10 +76,10 @@ function styleSpan(span, section) {
   if (shadow) s.textShadow = shadow;
 }
 
-function makeSpan(section, visible) {
+function makeSpan(section, visible, withBackground = true) {
   const span = document.createElement('span');
   span.textContent = section.text.replace(/\r\n|\r/g, '\n');
-  styleSpan(span, section);
+  styleSpan(span, section, withBackground);
   if (!visible) span.style.visibility = 'hidden';
   return span;
 }
@@ -100,25 +102,37 @@ function renderLine(line, time) {
     box.style.direction = 'rtl';
   }
 
+  // Os trechos ficam colados (karaokê costuma vir sílaba por sílaba). A folga do fundo nas bordas fica num
+  // único elemento em volta da linha, que repete a folga em cada linha quebrada (box-decoration-break).
+  const text = document.createElement('span');
+  text.className = 'cue-text';
   const sections = line.sections;
+  const backs = new Set(sections.map((s) => css(s.backColor, DEFAULT_BACK)));
+  // Fundo único só quando todos os trechos já apareceram; senão o fundo cobriria sílabas ainda escondidas.
+  const allVisible = sections.every((s) => time >= line.start + s.startOffset);
+  const sharedBack = backs.size === 1 && allVisible ? [...backs][0] : null;
+  if (sharedBack) text.style.backgroundColor = sharedBack;
+  const span = (section, visible) => makeSpan(section, visible, !sharedBack);
+
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
     const visible = time >= line.start + section.startOffset;
     // Ruby: base, parêntese, texto, parêntese
     if (section.rubyPart === RubyPart.Base && i + 2 < sections.length) {
-      const text = sections[i + 2];
+      const rubyText = sections[i + 2];
       const ruby = document.createElement('ruby');
-      if (text.rubyPart === RubyPart.TextAfter) ruby.style.rubyPosition = 'under';
-      ruby.append(makeSpan(section, visible));
+      if (rubyText.rubyPart === RubyPart.TextAfter) ruby.style.rubyPosition = 'under';
+      ruby.append(span(section, visible));
       const rt = document.createElement('rt');
-      rt.append(makeSpan(text, visible));
+      rt.append(span(rubyText, visible));
       ruby.append(rt);
-      box.append(ruby);
+      text.append(ruby);
       i += sections[i + 3]?.rubyPart === RubyPart.Parenthesis ? 3 : 2;
       continue;
     }
-    box.append(makeSpan(section, visible));
+    text.append(span(section, visible));
   }
+  box.append(text);
   return box;
 }
 

@@ -44,8 +44,7 @@ button:hover { border-color: var(--accent); }
 .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .cues { position: absolute; inset: 0; pointer-events: none; }
 .cue { position: absolute; white-space: pre; max-width: 96%; }
-.cue span { padding: 0 0.15em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.cue rt span { padding: 0; }
+.cue-text { padding: 0 0.15em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
 .controls .play { min-width: 84px; }
 .controls .seek { flex: 1; min-width: 0; accent-color: var(--accent); }

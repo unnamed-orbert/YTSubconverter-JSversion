@@ -9,11 +9,11 @@
 <body>
 <main>
   <h1>Conversor de legendas para o YouTube</h1>
-  <p class="sub">Arraste uma legenda <b>.srt</b>, <b>.sbv</b> ou <b>.ass</b> e baixe o <b>.ytt</b> pronto para enviar ao YouTube,
+  <p class="sub">Arraste uma legenda <b>.srt</b>, <b>.sbv</b>, <b>.ass</b> ou <b>.json3</b> (o formato que o YouTube serve) e baixe o <b>.ytt</b> pronto para enviar ao YouTube,
     ou solte um <b>.ytt</b> para ver como ele fica. Tudo acontece no seu navegador: o arquivo não é enviado para lugar nenhum.</p>
 
   <label id="drop" class="drop" tabindex="0">
-    <input id="file" type="file" accept=".srt,.sbv,.ass,.ytt,.srv3" multiple hidden>
+    <input id="file" type="file" accept=".srt,.sbv,.ass,.ytt,.srv3,.json3,.json,.txt" multiple hidden>
     <span class="big">Solte os arquivos aqui</span>
     <span>ou clique para escolher</span>
   </label>
@@ -22,6 +22,7 @@
     <label>Converter para
       <select id="format">
         <option value=".ytt" selected>.ytt (YouTube, com estilos)</option>
+        <option value=".ass">.ass (Aegisub, com estilos)</option>
         <option value=".srt">.srt (texto simples)</option>
       </select>
     </label>

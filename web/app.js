@@ -11,9 +11,16 @@ const preview = new YttPreview(document.getElementById('preview'));
 
 const YTT_EXTENSIONS = ['.ytt', '.srv3'];
 
+/** Extensão do arquivo; "legenda.json3.txt" conta como ".json3.txt" (o .txt é ignorado se o de antes for conhecido). */
 function extOf(name) {
   const i = name.lastIndexOf('.');
-  return i < 0 ? '' : name.slice(i).toLowerCase();
+  if (i < 0) return '';
+  const ext = name.slice(i).toLowerCase();
+  if (ext === '.txt') {
+    const j = name.lastIndexOf('.', i - 1);
+    if (j >= 0 && isExtensionSupported(name.slice(j, i))) return name.slice(j).toLowerCase();
+  }
+  return ext;
 }
 
 /**
@@ -21,8 +28,10 @@ function extOf(name) {
  * @returns {Promise<{download: {name: string, blob: Blob} | null, ytt: string | null}>}
  */
 async function convertFile(file, targetExt) {
-  const ext = extOf(file.name);
-  if (!isExtensionSupported(ext)) throw new Error(`Formato não suportado (${ext || 'sem extensão'}). Use .srt, .sbv, .ass ou .ytt.`);
+  const fullExt = extOf(file.name);
+  const ext = fullExt.replace(/\.txt$/, '') || fullExt;
+  // Um .txt qualquer ainda pode ser json3 ou .ytt: loadDocument reconhece pelo conteúdo.
+  if (!isExtensionSupported(ext) && ext !== '.txt') throw new Error(`Formato não suportado (${ext || 'sem extensão'}). Use .srt, .sbv, .ass, .ytt ou .json3.`);
   const content = new Uint8Array(await file.arrayBuffer());
 
   // Um .ytt com destino .ytt não precisa de conversão: só preview.
@@ -30,9 +39,9 @@ async function convertFile(file, targetExt) {
     return { download: null, ytt: content };
   }
 
-  const doc = await loadDocument(file.name, content);
+  const doc = await loadDocument('x' + ext, content);
   const text = convertDocument(doc, targetExt).save({ bom: true });
-  const name = file.name.slice(0, file.name.length - ext.length) + targetExt;
+  const name = file.name.slice(0, file.name.length - fullExt.length) + targetExt;
   // O BOM vem como ﻿ no texto; o Blob grava em UTF-8.
   const download = { name, blob: new Blob([text], { type: 'text/plain;charset=utf-8' }) };
   const ytt = YTT_EXTENSIONS.includes(targetExt) ? text : YTT_EXTENSIONS.includes(ext) ? content : null;

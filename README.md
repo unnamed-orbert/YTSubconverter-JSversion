@@ -15,6 +15,7 @@ node bin/ytsubconverter.js legenda.srt          # gera legenda.ytt
 node bin/ytsubconverter.js legenda.ass saida.ytt
 node bin/ytsubconverter.js legenda.ytt          # gera legenda.srt
 node bin/ytsubconverter.js legenda.srt saida.ass   # .ass com os estilos YT* padrão
+node bin/ytsubconverter.js legenda.json3 saida.ass # json3 do YouTube para .ass (ou saida.ytt)
 ```
 
 ```js
@@ -50,7 +51,16 @@ Como usa módulos JavaScript, a página precisa ser aberta por HTTP, não com du
 | .sbv | ✅ | — (o original também não escreve) |
 | .ytt / .srv3 | ✅ | ✅ |
 | .ass | ✅ | ✅ (sem o modo "visual" do `VisualizingAssDocument`) |
+| .json3 (YouTube) | ✅ (extra, não existe no original) | — |
 | .ttml | ❌ | ❌ |
+
+### json3
+
+O `json3` é o formato que o player do YouTube baixa (`/api/timedtext?...&fmt=json3`). Ele tem o mesmo
+conteúdo do srv3/.ytt em JSON (`pens`, `wsWinStyles`, `wpWinPositions`, `events` com `segs`), então
+`src/formats/json3.js` traduz o JSON para srv3 e usa o leitor de .ytt, que desfaz os truques do
+YTSubConverter (espaços de preenchimento, cópia para texto escuro etc.). Arquivos salvos como
+`legenda.json3.txt`, ou com outra extensão, são reconhecidos pelo conteúdo.
 
 ## Testes
 

@@ -107,7 +107,7 @@ export class DebugPanel {
     if (!this.recovered) {
       this.recovered = new Map();
       try {
-        for (const event of recoverTags({ lines: this.preview.lines }).events) {
+        for (const event of recoverTags({ lines: this.preview.lines }, { captureRadius: this.preview.captureRadius }).events) {
           for (const i of event.sourceLines) this.recovered.set(i, event);
         }
       } catch (err) {

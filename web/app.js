@@ -95,63 +95,149 @@ function updateDedupState() {
 format.addEventListener('change', updateDedupState);
 updateDedupState();
 
-function addRow(fileName) {
+/**
+ * Arquivos carregados. Cada um guarda a linha da lista e o que está aberto dele, para ser convertido de novo quando
+ * uma opção que muda a saída muda (ou no botão "Atualizar arquivos"), sem precisar soltar o arquivo outra vez.
+ * @typedef {{file: File, li: HTMLLIElement, status: HTMLElement, actions: HTMLElement, urls: string[],
+ *   recovered: boolean, run: number}} Entry
+ * @type {Entry[]}
+ */
+const entries = [];
+/** Arquivo mostrado no preview e no comparador (para reabrir no mesmo ponto depois de atualizar). */
+let previewEntry = null;
+let compareEntry = null;
+
+function addEntry(file) {
   const li = document.createElement('li');
   const name = document.createElement('span');
   name.className = 'name';
-  name.textContent = fileName;
+  name.textContent = file.name;
   const status = document.createElement('span');
-  setText(status, 'converting');
-  li.append(name, status);
+  const actions = document.createElement('span');
+  actions.className = 'actions';
+  li.append(name, status, actions);
   results.prepend(li);
-  return { li, status };
+  const entry = { file, li, status, actions, urls: [], recovered: false, run: 0 };
+  entries.push(entry);
+  updateRefreshState();
+  return entry;
 }
 
-function showPreview(ytt, name, download) {
-  // O preview lê o .ytt gerado (o mesmo arquivo que vai para o YouTube).
-  preview.show(YttDocument.parse(ytt), name, download);
+function objectUrl(entry, blob) {
+  const url = URL.createObjectURL(blob);
+  entry.urls.push(url);
+  return url;
+}
+
+/**
+ * Converte (ou reconverte) um arquivo com as opções atuais e refaz os botões da linha.
+ * @param {Entry} entry
+ * @param {{open?: boolean, refresh?: boolean}} opts open: abrir o preview; refresh: é uma atualização
+ */
+async function processEntry(entry, { open = false, refresh = false } = {}) {
+  const run = ++entry.run;
+  const stale = () => run !== entry.run;
+  const { file, status } = entry;
+  // Os botões novos são montados fora da página e trocados de uma vez, para a lista não pular durante a atualização.
+  const next = document.createElement('span');
+  next.className = 'actions';
+  const swap = () => {
+    entry.actions.replaceWith(next);
+    entry.actions = next;
+  };
+  status.className = '';
+  setText(status, refresh ? 'refreshing' : 'converting');
+  const oldUrls = entry.urls;
+  entry.urls = [];
+  try {
+    const { download, ytt } = await convertFile(file, format.value);
+    if (stale()) return;
+    const dl = { name: download.name, url: objectUrl(entry, download.blob) };
+    const show = (keepTime = false) => {
+      previewEntry = entry;
+      preview.captureRadius = Number(captureRadius.value);
+      showPreview(ytt, file.name, dl, keepTime);
+    };
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    setText(btn, 'viewPreview');
+    btn.addEventListener('click', () => show());
+    const a = document.createElement('a');
+    a.className = 'btn';
+    a.href = dl.url;
+    a.download = dl.name;
+    setText(a, 'downloadFile', { name: dl.name });
+    next.append(btn, a);
+    await addRecoverButton(entry, next);
+    if (stale()) return;
+    swap();
+    status.className = 'ok';
+    setText(status, 'done');
+
+    if (open) show();
+    else if (refresh && previewEntry === entry && !preview.root.hidden) show(true);
+  } catch (err) {
+    if (stale()) return;
+    console.error(err);
+    status.className = 'err';
+    // Erros da própria página são traduzidos; os da conversão aparecem como vieram.
+    setText(status, 'error', { message: err.i18nKey ? { key: err.i18nKey } : err.message });
+    swap();
+    // O preview pode estar mostrando a conversão anterior: os links dela continuam valendo.
+    entry.urls.push(...oldUrls.splice(0));
+    // A recuperação de tags lê o .ytt/.json3 por conta própria: um erro na conversão não pode esconder o botão.
+    await addRecoverButton(entry, next).catch((e) => console.error(e));
+  } finally {
+    // Os links antigos só são liberados depois que os novos estão na página.
+    if (!stale()) for (const url of oldUrls) URL.revokeObjectURL(url);
+  }
 }
 
 async function handleFiles(files) {
-  const targetExt = format.value;
   for (const file of files) {
-    const { li, status } = addRow(file.name);
-    try {
-      const { download, ytt } = await convertFile(file, targetExt);
-      status.className = 'ok';
-      setText(status, 'done');
-      const dl = { name: download.name, url: URL.createObjectURL(download.blob) };
-      const open = () => showPreview(ytt, file.name, dl);
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      setText(btn, 'viewPreview');
-      btn.addEventListener('click', open);
-      const a = document.createElement('a');
-      a.className = 'btn';
-      a.href = dl.url;
-      a.download = dl.name;
-      setText(a, 'downloadFile', { name: dl.name });
-      li.append(btn, a);
-      await addRecoverButton(li, file);
-
-      if (files.length === 1) open();
-    } catch (err) {
-      console.error(err);
-      status.className = 'err';
-      // Erros da própria página são traduzidos; os da conversão aparecem como vieram.
-      setText(status, 'error', { message: err.i18nKey ? { key: err.i18nKey } : err.message });
-      // A recuperação de tags lê o .ytt/.json3 por conta própria: um erro na conversão não pode esconder o botão.
-      if (!li.querySelector('button.recover')) await addRecoverButton(li, file).catch((e) => console.error(e));
-    }
+    await processEntry(addEntry(file), { open: files.length === 1 });
   }
+}
+
+/** Reconverte todos os arquivos carregados, mantendo o preview e o comparador abertos no mesmo ponto. */
+async function refreshAll() {
+  for (const entry of [...entries]) await processEntry(entry, { refresh: true });
+}
+
+const refreshBtn = document.getElementById('refresh');
+function updateRefreshState() {
+  refreshBtn.hidden = entries.length === 0;
+}
+refreshBtn.addEventListener('click', () => refreshAll());
+
+// Qualquer opção que muda a saída reconverte os arquivos já carregados (com uma pequena espera, para não
+// reconverter a cada tecla no campo de número).
+let refreshTimer = null;
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  if (entries.length) refreshTimer = setTimeout(refreshAll, 400);
+}
+for (const el of [format, fadeShadows, fadeCutoff, tagHierarchy, captureRadius, fixDuplication]) {
+  el.addEventListener('change', scheduleRefresh);
+  if (el.type === 'number') el.addEventListener('input', scheduleRefresh);
+}
+
+function showPreview(ytt, name, download, keepTime) {
+  // O preview lê o .ytt gerado (o mesmo arquivo que vai para o YouTube).
+  preview.show(YttDocument.parse(ytt), name, download, { keepTime });
 }
 
 /**
  * Botão "Tentar recuperar tags originais (heurística)": só para .ytt/.srv3/.json3. Gera o .ass com as tags
  * deduzidas dos quadros (src/recover/recoverTags.js) e, se houver estilos com várias sombras, o StyleOptions.xml.
+ * Numa atualização, se a recuperação já tinha sido feita, ela é refeita sozinha (sem baixar de novo).
+ * @param {Entry} entry
+ * @param {HTMLElement} actions onde ficam os botões
  */
-async function addRecoverButton(li, file) {
+async function addRecoverButton(entry, actions) {
+  const { file } = entry;
+  const run = entry.run;
   const content = new Uint8Array(await file.arrayBuffer());
   const format = getInputFormat(file.name, content);
   if (format !== InputFormat.Ytt && format !== InputFormat.Json3) return;
@@ -164,7 +250,7 @@ async function addRecoverButton(li, file) {
   btn.title = t('recoverTitle');
   const info = document.createElement('span');
   info.className = 'recover-info';
-  btn.addEventListener('click', async () => {
+  const recover = async ({ auto = false } = {}) => {
     btn.disabled = true;
     setText(info, 'recovering');
     try {
@@ -172,10 +258,12 @@ async function addRecoverButton(li, file) {
       await new Promise((r) => setTimeout(r, 20));
       const doc = await loadDocument(file.name, content);
       const result = recoverTags({ lines: doc.lines, videoDimensions: doc.videoDimensions }, { captureRadius: Number(captureRadius.value) });
+      if (run !== entry.run) return;
+      entry.recovered = true;
       const name = baseName(file.name) + '.recuperado.ass';
       const a = document.createElement('a');
       a.className = 'btn';
-      a.href = URL.createObjectURL(new Blob(['\uFEFF' + result.ass], { type: 'text/plain;charset=utf-8' }));
+      a.href = objectUrl(entry, new Blob(['﻿' + result.ass], { type: 'text/plain;charset=utf-8' }));
       a.download = name;
       setText(a, 'downloadFile', { name });
       const tags = Object.entries(result.summary).map(([tag, n]) => `\\${tag} ×${n}`).join(', ');
@@ -184,28 +272,34 @@ async function addRecoverButton(li, file) {
       if (result.styles.some((st) => st.shadowTypes.length > 1)) {
         const x = document.createElement('a');
         x.className = 'btn';
-        x.href = URL.createObjectURL(new Blob([result.styleOptionsXml], { type: 'application/xml' }));
+        x.href = objectUrl(entry, new Blob([result.styleOptionsXml], { type: 'application/xml' }));
         x.download = 'StyleOptions.xml';
         setText(x, 'recoverStyleOptions');
         extra.push(x);
       }
-      extra.push(compareButton(file, content, result));
+      const cmp = compareButton(entry, content, result);
+      extra.push(cmp.btn);
       btn.replaceWith(...extra);
-      a.click();
+      if (!auto) a.click();
+      // O comparador aberto com este arquivo é refeito com a recuperação nova, no mesmo ponto.
+      else if (compareEntry === entry && !compare.root.hidden) await cmp.open(true);
     } catch (err) {
       console.error(err);
       btn.disabled = false;
       setText(info, 'error', { message: err.message });
     }
-  });
-  li.append(btn, info);
+  };
+  btn.addEventListener('click', () => recover());
+  actions.append(btn, info);
+  if (entry.recovered) await recover({ auto: true });
 }
 
 /**
  * Botão "Comparar original × refeito": converte o .ass recuperado de volta para .ytt (com o próprio port) e
  * mostra os dois lado a lado, com a semelhança medida a cada 100 ms (src/compare/compareYtt.js).
  */
-function compareButton(file, content, recovered) {
+function compareButton(entry, content, recovered) {
+  const { file } = entry;
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'compare-btn';
@@ -213,7 +307,7 @@ function compareButton(file, content, recovered) {
   btn.dataset.i18nTitle = 'compareTitle';
   btn.title = t('compareTitle');
   let ready = null;
-  btn.addEventListener('click', async () => {
+  const open = async (keepTime = false) => {
     btn.disabled = true;
     setText(btn, 'comparing');
     try {
@@ -223,10 +317,11 @@ function compareButton(file, content, recovered) {
         const original = await loadDocument(file.name, content);
         const { ytt, doc } = await remakeYtt(recovered);
         const name = baseName(file.name) + '.refeito.ytt';
-        const url = URL.createObjectURL(new Blob(['\uFEFF' + ytt], { type: 'text/plain;charset=utf-8' }));
+        const url = objectUrl(entry, new Blob(['﻿' + ytt], { type: 'text/plain;charset=utf-8' }));
         ready = { original: original.lines, remade: doc.lines, download: { name, url } };
       }
-      compare.show(ready.original, ready.remade, file.name, ready.download);
+      compareEntry = entry;
+      compare.show(ready.original, ready.remade, file.name, ready.download, { keepTime });
     } catch (err) {
       console.error(err);
       setText(btn, 'error', { message: err.message });
@@ -235,8 +330,9 @@ function compareButton(file, content, recovered) {
     }
     setText(btn, 'compareBtn');
     btn.disabled = false;
-  });
-  return btn;
+  };
+  btn.addEventListener('click', () => open());
+  return { btn, open };
 }
 
 input.addEventListener('change', () => {

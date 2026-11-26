@@ -254,8 +254,10 @@ export class YttPreview {
    * @param {import('../src/formats/ytt.js').YttDocument} doc
    * @param {string} name
    * @param {{name: string, url: string} | null} [download] arquivo convertido, oferecido ao lado do preview
+   * @param {{keepTime?: boolean}} [opts] keepTime: o mesmo arquivo reconvertido (opção mudada): fica no mesmo ponto,
+   *   tocando ou não, e sem rolar a página
    */
-  show(doc, name, download = null) {
+  show(doc, name, download = null, { keepTime = false } = {}) {
     this.lines = doc.lines.filter((l) => l.end > l.start && l.text.trim() !== '');
     this.title.textContent = name;
     this.downloadLink.hidden = !download;
@@ -268,6 +270,12 @@ export class YttPreview {
     this.debug?.reset();
     this.root.hidden = false;
     this.updateDuration();
+    if (keepTime) {
+      // Com vídeo, o tempo é o do vídeo: só redesenha.
+      if (this.hasVideo) this.render();
+      else this.setTime(this.time);
+      return;
+    }
     // Começa logo antes da primeira legenda
     this.setTime(this.lines.length ? Math.max(0, Math.min(...this.lines.map((l) => l.start)) - 500) : 0);
     this.root.scrollIntoView({ behavior: 'smooth', block: 'start' });

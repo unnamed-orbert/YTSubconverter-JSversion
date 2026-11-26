@@ -110,8 +110,9 @@ export class ComparePanel {
    * @param {import('../src/model.js').Line[]} remade
    * @param {string} name
    * @param {{name: string, url: string} | null} download .ytt refeito
+   * @param {{keepTime?: boolean}} [opts] keepTime: refeito de novo (opção mudada): fica no mesmo ponto, sem rolar
    */
-  show(original, remade, name, download = null) {
+  show(original, remade, name, download = null, { keepTime = false } = {}) {
     this.sides = [visibleLines(original), visibleLines(remade)];
     this.result = compareDocuments(this.sides[0], this.sides[1]);
     this.duration = Math.max(this.result.duration, 1000);
@@ -128,6 +129,10 @@ export class ComparePanel {
     this.root.hidden = false;
     this.refreshTexts();
     this.drawBar();
+    if (keepTime) {
+      this.setTime(this.time);
+      return this.result;
+    }
     const first = Math.min(...this.sides.flat().map((l) => l.start));
     // Começa na primeira diferença (ou logo antes da primeira legenda)
     const seg = this.result.segments[0];

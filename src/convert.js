@@ -2,6 +2,7 @@
 
 import { SbvDocument, SrtDocument } from './formats/srt.js';
 import { YttDocument } from './formats/ytt.js';
+import { AssDocument } from './formats/ass/assDocument.js';
 
 /**
  * Loads a subtitle file by extension.
@@ -33,6 +34,9 @@ export function isExtensionSupported(ext) {
 /** Converts a document to the format of the given extension. */
 export function convertDocument(doc, newExtension) {
   switch (newExtension?.toLowerCase()) {
+    case '.ass':
+      // VisualizingAssDocument (visual = true in C#) is not ported
+      return AssDocument.fromSubtitleDocument(doc);
     case '.srt':
       return new SrtDocument(doc);
     case '.ytt':

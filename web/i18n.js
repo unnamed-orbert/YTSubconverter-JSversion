@@ -18,6 +18,10 @@ const STRINGS = {
       'ou solte um <b>.ytt</b> para ver como ele fica. O formato é reconhecido pelo conteúdo, então o arquivo pode vir sem extensão ou com a extensão errada. ' +
       'Tudo acontece no seu navegador: o arquivo não é enviado para lugar nenhum.',
     language: 'Idioma',
+    theme: 'Tema',
+    themeAuto: 'Automático',
+    themeLight: 'Claro',
+    themeDark: 'Escuro',
     docsLink: 'Documentação',
     docsTitle: 'Documentação · Conversor de legendas',
     docsBack: '← Voltar ao conversor',
@@ -159,6 +163,10 @@ const STRINGS = {
       'or drop a <b>.ytt</b> to see how it looks. The format is detected from the content, so the file can have no extension or the wrong one. ' +
       'Everything happens in your browser: the file is never uploaded anywhere.',
     language: 'Language',
+    theme: 'Theme',
+    themeAuto: 'Automatic',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     docsLink: 'Documentation',
     docsTitle: 'Documentation · Subtitle converter',
     docsBack: '← Back to the converter',
@@ -300,6 +308,10 @@ const STRINGS = {
       'o suelta un <b>.ytt</b> para ver cómo queda. El formato se reconoce por el contenido, así que el archivo puede venir sin extensión o con la extensión equivocada. ' +
       'Todo ocurre en tu navegador: el archivo no se envía a ningún sitio.',
     language: 'Idioma',
+    theme: 'Tema',
+    themeAuto: 'Automático',
+    themeLight: 'Claro',
+    themeDark: 'Oscuro',
     docsLink: 'Documentación',
     docsTitle: 'Documentación · Conversor de subtítulos',
     docsBack: '← Volver al conversor',
@@ -441,6 +453,10 @@ const STRINGS = {
       "ou déposez un <b>.ytt</b> pour voir son rendu. Le format est reconnu d'après le contenu : le fichier peut être sans extension ou avec une mauvaise extension. " +
       "Tout se passe dans votre navigateur : le fichier n'est envoyé nulle part.",
     language: 'Langue',
+    theme: 'Thème',
+    themeAuto: 'Automatique',
+    themeLight: 'Clair',
+    themeDark: 'Sombre',
     docsLink: 'Documentation',
     docsTitle: 'Documentation · Convertisseur de sous-titres',
     docsBack: '← Retour au convertisseur',

@@ -5,11 +5,13 @@ import { YttDocument } from '../src/formats/ytt.js';
 import { YttPreview } from './preview.js';
 import { canFixMassiveDuplication, fixMassiveDuplication } from '../src/dedup.js';
 import { initI18n, setText, t } from './i18n.js';
+import { initTheme } from './theme.js';
 import { recoverTags } from '../src/recover/recoverTags.js';
 import { remakeYtt } from '../src/compare/remake.js';
 import { ComparePanel } from './comparePanel.js';
 
 initI18n(document.getElementById('lang'));
+initTheme(document.getElementById('theme'));
 
 /** Erro com mensagem traduzível (chave em i18n.js). */
 class PageError extends Error {

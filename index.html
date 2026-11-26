@@ -4,12 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title data-i18n="pageTitle">YTsubConverter - Online Version</title>
+<script>try{const t=localStorage.getItem('ytsubconverter.theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="web/style.css">
 </head>
 <body>
 <main>
   <div class="topbar">
     <a class="docs-link" href="documentacao/" data-i18n="docsLink">Documentação</a>
+    <label class="theme"><span data-i18n="theme">Tema</span>
+      <select id="theme">
+        <option value="auto" data-i18n="themeAuto">Automático</option>
+        <option value="light" data-i18n="themeLight">Claro</option>
+        <option value="dark" data-i18n="themeDark">Escuro</option>
+      </select>
+    </label>
     <label class="lang"><span data-i18n="language">Idioma</span>
       <select id="lang"></select>
     </label>

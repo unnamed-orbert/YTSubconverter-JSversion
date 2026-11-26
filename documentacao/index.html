@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Documentação · Conversor de legendas</title>
+<script>try{const t=localStorage.getItem('ytsubconverter.theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="../web/style.css">
 <link rel="stylesheet" href="../documentacao/docs.css">
 </head>
@@ -12,6 +13,13 @@
   <div class="topbar">
     <a class="docs-link" href="../" data-i18n="docsBack">← Voltar ao conversor</a>
     <a class="docs-link" href="../documentacao/diferencas/" data-i18n="diffLink">Diferenças em relação ao original</a>
+    <label class="theme"><span data-i18n="theme">Tema</span>
+      <select id="theme">
+        <option value="auto" data-i18n="themeAuto">Automático</option>
+        <option value="light" data-i18n="themeLight">Claro</option>
+        <option value="dark" data-i18n="themeDark">Escuro</option>
+      </select>
+    </label>
     <label class="lang"><span data-i18n="language">Idioma</span>
       <select id="lang"></select>
     </label>
@@ -158,6 +166,7 @@
     <tr><td>Corrigir duplicação massiva</td><td>Só na saída .srt, ligada por padrão. Um .json3/.ytt cheio de animação repete a mesma frase em centenas de linhas, uma por quadro.
       A correção agrupa por posição na tela (grade de 20%), junta quadros com o mesmo texto (ou texto que cresce) separados por menos de 200 ms, descarta frases com menos de 300 ms, fica com a de baixo quando duas se sobrepõem e fecha buracos de até 500 ms.</td></tr>
     <tr><td>Atualizar arquivos</td><td>Ao mudar qualquer opção acima, os arquivos já carregados são convertidos de novo sozinhos: download, preview, recuperação de tags e comparador são atualizados, e o preview e o comparador continuam no mesmo ponto. O botão faz o mesmo na hora.</td></tr>
+    <tr><td>Tema</td><td>Automático (segue o sistema), Claro ou Escuro. Fica salvo e vale também para a documentação.</td></tr>
     <tr><td>Idioma</td><td>Português, inglês, espanhol ou francês. Começa no idioma do navegador e fica salvo para as próximas visitas.</td></tr>
   </table></div>
   <p class="tip">Os arquivos nunca saem do seu computador: a conversão roda no navegador, com os mesmos módulos da linha de comando.</p>
@@ -381,6 +390,7 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
     <tr><td>Fix massive duplication</td><td>Only for .srt output, on by default. A .json3/.ytt full of animation repeats the same sentence across hundreds of lines, one per frame.
       The fix groups by on-screen position (20% grid), merges frames with the same text (or growing text) less than 200 ms apart, drops sentences shorter than 300 ms, keeps the lower one when two overlap and closes gaps of up to 500 ms.</td></tr>
     <tr><td>Update files</td><td>When any option above changes, the files already loaded are converted again on their own: download, preview, tag recovery and comparison are updated, and the preview and comparison stay at the same point. The button does the same right away.</td></tr>
+    <tr><td>Theme</td><td>Automatic (follows the system), Light or Dark. It's saved and also applies to the documentation.</td></tr>
     <tr><td>Language</td><td>Portuguese, English, Spanish or French. Starts in the browser's language and is saved for later visits.</td></tr>
   </table></div>
   <p class="tip">Files never leave your computer: the conversion runs in the browser, with the same modules as the command line.</p>
@@ -604,6 +614,7 @@ const doc = YttDocument.parse(yttText);</code></pre>
     <tr><td>Corregir duplicación masiva</td><td>Solo en la salida .srt, activada por defecto. Un .json3/.ytt lleno de animación repite la misma frase en cientos de líneas, una por cuadro.
       La corrección agrupa por posición en pantalla (cuadrícula del 20%), une cuadros con el mismo texto (o texto que crece) separados por menos de 200 ms, descarta frases de menos de 300 ms, se queda con la de abajo cuando dos se solapan y cierra huecos de hasta 500 ms.</td></tr>
     <tr><td>Actualizar archivos</td><td>Al cambiar cualquier opción de arriba, los archivos ya cargados se vuelven a convertir solos: descarga, vista previa, recuperación de etiquetas y comparador se actualizan, y la vista previa y el comparador siguen en el mismo punto. El botón hace lo mismo al instante.</td></tr>
+    <tr><td>Tema</td><td>Automático (sigue al sistema), Claro u Oscuro. Queda guardado y vale también para la documentación.</td></tr>
     <tr><td>Idioma</td><td>Portugués, inglés, español o francés. Empieza en el idioma del navegador y queda guardado para las próximas visitas.</td></tr>
   </table></div>
   <p class="tip">Los archivos nunca salen de tu computadora: la conversión se hace en el navegador, con los mismos módulos que la línea de comandos.</p>
@@ -827,6 +838,7 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
     <tr><td>Corriger la duplication massive</td><td>Seulement pour la sortie .srt, activée par défaut. Un .json3/.ytt plein d'animations répète la même phrase sur des centaines de lignes, une par image.
       La correction regroupe par position à l'écran (grille de 20 %), fusionne les images au même texte (ou au texte qui s'allonge) séparées de moins de 200 ms, écarte les phrases de moins de 300 ms, garde la plus basse quand deux se chevauchent et comble les trous jusqu'à 500 ms.</td></tr>
     <tr><td>Mettre à jour les fichiers</td><td>Quand une option ci-dessus change, les fichiers déjà chargés sont reconvertis tout seuls : téléchargement, aperçu, récupération des balises et comparaison sont mis à jour, et l'aperçu et la comparaison restent au même instant. Le bouton fait la même chose tout de suite.</td></tr>
+    <tr><td>Thème</td><td>Automatique (suit le système), Clair ou Sombre. Il est enregistré et s'applique aussi à la documentation.</td></tr>
     <tr><td>Langue</td><td>Portugais, anglais, espagnol ou français. Commence dans la langue du navigateur et reste enregistrée pour les visites suivantes.</td></tr>
   </table></div>
   <p class="tip">Les fichiers ne quittent jamais votre ordinateur : la conversion se fait dans le navigateur, avec les mêmes modules que la ligne de commande.</p>

@@ -14,6 +14,7 @@ de `Math.Round`, `DateTime.AddMilliseconds` do .NET Framework e o `System.Random
 node bin/ytsubconverter.js legenda.srt          # gera legenda.ytt
 node bin/ytsubconverter.js legenda.ass saida.ytt
 node bin/ytsubconverter.js legenda.ytt          # gera legenda.srt
+node bin/ytsubconverter.js legenda.srt saida.ass   # .ass com os estilos YT* padrão
 ```
 
 ```js
@@ -44,7 +45,7 @@ até lá ela mostra um aviso.
 | .srt | ✅ | ✅ |
 | .sbv | ✅ | — (o original também não escreve) |
 | .ytt / .srv3 | ✅ | ✅ |
-| .ass | ⏳ (em desenvolvimento em outro branch) | ⏳ |
+| .ass | ✅ | ✅ (sem o modo "visual" do `VisualizingAssDocument`) |
 | .ttml | ❌ | ❌ |
 
 ## Testes
@@ -54,7 +55,7 @@ npm test
 ```
 
 `test/files/ass/` contém os arquivos de teste do projeto original (`X.ass` e o `X.ytt` esperado,
-gerados pelo programa em C#). Eles são comparados byte a byte assim que o leitor de `.ass` estiver integrado.
+gerados pelo programa em C#). Eles são comparados byte a byte nos dois sentidos (.ass → .ytt e .ytt → .ass → .ytt).
 
 ## Licença
 

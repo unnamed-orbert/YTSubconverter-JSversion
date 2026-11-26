@@ -57,3 +57,23 @@ export function tryParseHexInt(s) {
   if (digits.length > 8) return null;
   return parseInt(digits, 16) | 0;
 }
+
+/**
+ * float.ToString(CultureInfo.InvariantCulture) on .NET Framework: format "G" with 7 significant digits
+ * (scientific notation when the exponent is >= 7 or <= -5; "-0" is written as "0").
+ */
+export function formatFloat(x) {
+  x = f32(x);
+  if (Number.isNaN(x)) return 'NaN';
+  if (x === Infinity) return 'Infinity';
+  if (x === -Infinity) return '-Infinity';
+  if (x === 0) return '0';
+
+  const [mantissa, expPart] = x.toExponential(6).split('e');
+  const exponent = Number(expPart);
+  if (exponent > -5 && exponent < 7) return String(Number(x.toPrecision(7)));
+
+  const digits = mantissa.replace(/\.?0+$/, '');
+  const sign = exponent < 0 ? '-' : '+';
+  return `${digits}E${sign}${String(Math.abs(exponent)).padStart(2, '0')}`;
+}

@@ -1,5 +1,5 @@
 // Port of the reading part of Formats/Ass/AssDocument.cs.
-// (Writing .ass, i.e. AssDocument(SubtitleDocument) and Save(), is not ported yet.)
+// The writing part (AssDocument(SubtitleDocument) and Save()) is in assWriter.js.
 
 import { ForeColorAnimation, SecondaryColorAnimation } from '../../animations/animations.js';
 import { expandAnimations } from '../../animations/animator.js';
@@ -9,7 +9,10 @@ import { decodeText, readLines, SortedNumberMap, splitMax } from '../../util/mis
 import { f32 } from '../../util/numbers.js';
 import { roundTimeToFrameCenter } from '../../util/time.js';
 import { SubtitleDocument } from '../subtitleDocument.js';
-import { AssDialogue, AssDocumentSection, AssLine, AssSection, AssStyle } from './assModel.js';
+import { AssDialogue, AssDocumentSection, AssLine, AssSection, AssStyle, loadStyleOptionsFromString } from './assModel.js';
+import { createAssDocumentFrom, saveAssDocument } from './assWriter.js';
+import { DEFAULT_STYLE_OPTIONS_XML } from './defaultStyleOptions.js';
+import { DEFAULT_STYLES_ASS } from './defaultStyles.js';
 import { SimpleKaraokeType } from './karaokeTypes.js';
 import { createTagHandlers } from './tags.js';
 
@@ -41,6 +44,22 @@ export class AssDocument extends SubtitleDocument {
   /** Parses the text of an .ass file. */
   static parse(text, styleOptions = null) {
     return new AssDocument(text, styleOptions);
+  }
+
+  /**
+   * AssDocument(SubtitleDocument doc): converts another document to .ass, using the built-in YT* styles.
+   * @param {SubtitleDocument} doc
+   */
+  static fromSubtitleDocument(doc) {
+    return createAssDocumentFrom(AssDocument, doc, DEFAULT_STYLES_ASS, loadStyleOptionsFromString(DEFAULT_STYLE_OPTIONS_XML));
+  }
+
+  /**
+   * Serializes the document as .ass (AssDocument.Save).
+   * @param {{bom?: boolean, newline?: string}} [options] see saveAssDocument in assWriter.js
+   */
+  save(options) {
+    return saveAssDocument(this, options);
   }
 
   _load(text, styleOptions) {

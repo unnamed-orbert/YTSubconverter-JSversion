@@ -38,10 +38,13 @@ O .ytt não tem opacidade de sombra. Só existem duas sombras possíveis:
 Mas a cor do `ec` pode mudar a cada quadro. Com a hierarquia ligada, uma sombra que deveria estar transparente
 (a opacidade dela está mais perto da do texto do que da opaca: `\fad`, `\fade`, `\ytkt(Fade)`, `\t` de alpha):
 
-- enquanto o texto está acima do corte (**40%** por padrão, a porcentagem "tirar sombra/contorno abaixo de"), o `ec`
+- enquanto o texto está acima do corte (**40%** por padrão, a porcentagem "tirar sombra/contorno abaixo de"), o `ec` do **contorno (Glow)**
   continua opaco e a cor dele vai da cor da sombra até a **cor do texto** (a cor em destaque), chegando nela
   exatamente no corte. O contorno "se dissolve" no texto em vez de ficar como um rastro;
-- abaixo do corte o contorno sai e o texto some sozinho pela opacidade, como o fade do libass.
+- as sombras deslocadas (suave, dura, relevo) **não** vão para a cor do texto: na cor do texto elas viram um borrão
+  claro em volta das letras. As escuras viram a sombra automática (#222222 com o `fo` do texto) e somem junto; as
+  coloridas ficam como estão até o corte;
+- abaixo do corte o contorno e as sombras saem e o texto some sozinho pela opacidade, como o fade do libass.
 
 No `\ytkt(Fade)` é o caminho inverso: a sílaba entra só com o texto e, a partir de 40%, ganha um contorno da cor
 dela que vai virando a cor do contorno.

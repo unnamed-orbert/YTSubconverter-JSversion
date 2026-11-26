@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// Uso: ytsubconverter <entrada.(srt|sbv|ass)> [saida.(ytt|srv3|srt)]
+// Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3)> [saida.(ytt|srv3|srt)]
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { extname } from 'node:path';
 import { loadDocument, convertDocument } from '../src/convert.js';
 
 const [input, outputArg] = process.argv.slice(2);
 if (!input || input === '-h' || input === '--help') {
-  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass)> [saida.(ytt|srv3|srt)]');
+  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3)> [saida.(ytt|srv3|srt)]');
   process.exit(input ? 0 : 1);
 }
 
-const output = outputArg ?? input.slice(0, input.length - extname(input).length) + (extname(input).toLowerCase() === '.ytt' ? '.srt' : '.ytt');
+const output = outputArg ?? input.slice(0, input.length - extname(input).length) + (['.ytt', '.srv3'].includes(extname(input).toLowerCase()) ? '.srt' : '.ytt');
 
 try {
   const doc = await loadDocument(input, readFileSync(input));

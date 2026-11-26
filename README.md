@@ -13,11 +13,13 @@ de `Math.Round`, `DateTime.AddMilliseconds` do .NET Framework e o `System.Random
 ```sh
 node bin/ytsubconverter.js legenda.srt          # gera legenda.ytt
 node bin/ytsubconverter.js legenda.ass saida.ytt
+node bin/ytsubconverter.js legenda.ytt          # gera legenda.srt
 ```
 
 ```js
 import { SrtDocument, YttDocument } from './src/index.js';
 const ytt = new YttDocument(SrtDocument.parse(textoSrt)).save();
+const doc = YttDocument.parse(textoYtt); // leitura de .ytt/.srv3 (desfaz os truques da escrita)
 ```
 
 ## Estado
@@ -26,7 +28,7 @@ const ytt = new YttDocument(SrtDocument.parse(textoSrt)).save();
 |---|---|---|
 | .srt | ✅ | ✅ |
 | .sbv | ✅ | — (o original também não escreve) |
-| .ytt / .srv3 | ⏳ | ✅ |
+| .ytt / .srv3 | ✅ | ✅ |
 | .ass | ⏳ (em desenvolvimento em outro branch) | ⏳ |
 | .ttml | ❌ | ❌ |
 

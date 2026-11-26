@@ -16,6 +16,9 @@ export async function loadDocument(fileName, content, options = {}) {
       return SrtDocument.parse(content);
     case '.sbv':
       return SbvDocument.parse(content);
+    case '.srv3':
+    case '.ytt':
+      return YttDocument.parse(content);
     case '.ass': {
       // The .ass reader is developed separately; load it lazily so the rest works without it.
       const { loadAssDocument } = await import('./formats/ass/index.js');
@@ -27,7 +30,7 @@ export async function loadDocument(fileName, content, options = {}) {
 }
 
 export function isExtensionSupported(ext) {
-  return ['.srt', '.sbv', '.ass'].includes(ext.toLowerCase());
+  return ['.srt', '.sbv', '.ass', '.ytt', '.srv3'].includes(ext.toLowerCase());
 }
 
 /** Converts a document to the format of the given extension. */

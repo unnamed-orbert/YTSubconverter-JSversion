@@ -5,11 +5,12 @@ import { extname } from 'node:path';
 import { loadDocument, convertDocument } from '../src/convert.js';
 
 const args = process.argv.slice(2);
-// --fade-sombras: contorno/sombra quase pretos somem junto no fade (ver YttDocument, opção fadeDarkShadows)
-const fadeDarkShadows = args.includes('--fade-sombras');
-const [input, outputArg] = args.filter((a) => a !== '--fade-sombras');
+// --fade-sombras[=45]: no fade, tira sombra/contorno quando a opacidade do texto fica abaixo de 45% (ver YttDocument)
+const fadeArg = args.find((a) => a === '--fade-sombras' || a.startsWith('--fade-sombras='));
+const fadeShadowCutoff = fadeArg ? Number(fadeArg.split('=')[1] ?? 45) : null;
+const [input, outputArg] = args.filter((a) => a !== fadeArg);
 if (!input || input === '-h' || input === '--help') {
-  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras]');
+  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras[=45]]');
   process.exit(input ? 0 : 1);
 }
 
@@ -20,7 +21,7 @@ const output = outputArg ?? base.slice(0, base.length - inputExt.length) + (['.y
 
 try {
   const doc = await loadDocument(input, readFileSync(input));
-  const result = convertDocument(doc, extname(output), { fadeDarkShadows });
+  const result = convertDocument(doc, extname(output), { fadeShadowCutoff });
   writeFileSync(output, result.save({ bom: true }), 'utf8');
   console.log(`${input} -> ${output}`);
 } catch (err) {

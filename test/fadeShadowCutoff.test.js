@@ -19,23 +19,23 @@ Dialogue: 0,0:00:05.00,0:00:08.00,Rosa,,0,0,0,,{\\fad(0,2000)}Rosa
 `;
 
 const pens = (ytt) => [...ytt.matchAll(/<pen [^>]*>/g)].map((m) => m[0]);
+const fo = (pen) => Number(/fo="(\d+)"/.exec(pen)[1]);
 const convert = async (options) => convertDocument(await loadDocument('x.ass', ASS), '.ytt', options).save();
 
-test('sem a opção, igual ao original: contorno preto com "ec" (opaco) durante o fade', async () => {
-  const ytt = await convert();
-  const fading = pens(ytt).filter((p) => /et="3"/.test(p) && !/fo="254"/.test(p));
-  assert.ok(fading.length > 5);
-  assert.ok(fading.some((p) => p.includes('ec="#000000"')));
+test('sem a opção, igual ao original: contorno com "ec" (opaco) até o fim do fade', async () => {
+  const faint = pens(await convert()).filter((p) => fo(p) > 0 && fo(p) < 100);
+  assert.ok(faint.length > 2);
+  assert.ok(faint.every((p) => /et="3"/.test(p) && /ec="/.test(p)));
 });
 
-test('com fadeDarkShadows, contorno preto vira #222222 sem "ec" (acompanha o fo) nos passos do fade', async () => {
-  const ytt = await convert({ fadeDarkShadows: true });
-  const all = pens(ytt);
-  const fadingBlack = all.filter((p) => /et="3"/.test(p) && !/fo="254"/.test(p) && !p.includes('ec="#CF4575"'));
-  assert.ok(fadingBlack.length > 5);
-  for (const p of fadingBlack) assert.ok(!p.includes('ec='), p);
-  // Texto opaco mantém o contorno preto
-  assert.ok(all.some((p) => /fo="254"/.test(p) && p.includes('ec="#000000"')));
-  // Contorno colorido não muda: o YouTube não tem como deixá-lo transparente
-  assert.ok(all.filter((p) => !/fo="254"/.test(p)).some((p) => p.includes('ec="#CF4575"')));
+test('com fadeShadowCutoff 45, contorno some abaixo de 45% e fica acima', async () => {
+  const all = pens(await convert({ fadeShadowCutoff: 45 }));
+  const limit = 0.45 * 255;
+  const below = all.filter((p) => fo(p) > 0 && fo(p) < limit);
+  const above = all.filter((p) => fo(p) >= limit);
+  assert.ok(below.length > 2 && above.length > 2);
+  for (const p of below) assert.ok(!/et=/.test(p), p);
+  for (const p of above) assert.ok(/et="3"/.test(p), p);
+  // Vale para qualquer cor de contorno
+  assert.ok(above.some((p) => p.includes('ec="#CF4575"')) && above.some((p) => p.includes('ec="#000000"')));
 });

@@ -7,6 +7,7 @@ const drop = document.getElementById('drop');
 const input = document.getElementById('file');
 const format = document.getElementById('format');
 const fadeShadows = document.getElementById('fadeShadows');
+const fadeCutoff = document.getElementById('fadeCutoff');
 const results = document.getElementById('results');
 const preview = new YttPreview(document.getElementById('preview'));
 
@@ -30,7 +31,8 @@ function extOf(name) {
  * @returns {Promise<{download: {name: string, blob: Blob}, ytt: string | Uint8Array}>}
  */
 async function convertFile(file, targetExt) {
-  const options = { fadeDarkShadows: fadeShadows.checked };
+  const cutoff = Number(fadeCutoff.value);
+  const options = { fadeShadowCutoff: fadeShadows.checked && cutoff > 0 ? Math.min(cutoff, 100) : null };
   const fullExt = extOf(file.name);
   const ext = fullExt.replace(/\.txt$/, '') || fullExt;
   // Um .txt qualquer ainda pode ser json3 ou .ytt: loadDocument reconhece pelo conteúdo.
@@ -40,7 +42,7 @@ async function convertFile(file, targetExt) {
 
   // Um .ytt com destino .ytt não precisa de conversão: o arquivo baixado é o próprio (a não ser que a opção do fade
   // esteja ligada, que muda as sombras).
-  if (isYtt && YTT_EXTENSIONS.includes(targetExt) && !options.fadeDarkShadows) {
+  if (isYtt && YTT_EXTENSIONS.includes(targetExt) && options.fadeShadowCutoff == null) {
     return { download: { name: file.name, blob: file }, ytt: content };
   }
 

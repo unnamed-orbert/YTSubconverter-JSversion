@@ -13,22 +13,19 @@ const ZERO_WIDTH_SPACE = '​';
 // Surrounded with zwsp's so it can be recognized and removed during reverse conversion
 const PADDING_SPACE = '​ ​';
 
-// fadeDarkShadows: maior componente de cor para uma sombra contar como "quase preta" (#404040 ou mais escura)
-const NEAR_BLACK_MAX = 0x40;
-
 const REFERENCE_VIDEO_DIMENSIONS = { width: 1280, height: 720 };
 
 export class YttDocument extends SubtitleDocument {
   /**
    * @param {SubtitleDocument} [doc]
-   * @param {{fadeDarkShadows?: boolean}} [options] fadeDarkShadows: extensão do port (não existe no original).
-   *   O YouTube desenha opaca toda sombra/contorno com "ec"; só a cor padrão #222222 acompanha a opacidade do
-   *   texto. Com a opção, sombras quase pretas em texto transparente (passos de um fade) viram #222222 com a
-   *   opacidade do texto, para sumirem junto em vez de deixar o formato das letras em preto.
+   * @param {{fadeShadowCutoff?: number | null}} [options] fadeShadowCutoff: extensão do port (não existe no original).
+   *   O YouTube desenha opaca toda sombra/contorno com "ec" (só #222222 acompanha a opacidade do texto), então num
+   *   fade o texto some e o contorno fica, deixando um rastro. Com a opção (porcentagem, ex.: 45), quando a opacidade
+   *   do texto fica abaixo dela a sombra/contorno é removida e sobra só o texto, que some pela opacidade ("true fade").
    */
-  constructor(doc, { fadeDarkShadows = false } = {}) {
+  constructor(doc, { fadeShadowCutoff = null } = {}) {
     super(doc);
-    this.fadeDarkShadows = fadeDarkShadows;
+    this.fadeShadowCutoff = fadeShadowCutoff;
   }
 
   /**
@@ -225,12 +222,8 @@ export class YttDocument extends SubtitleDocument {
       if (section.foreColor.a === 255) section.foreColor = changeAlpha(section.foreColor, 254);
       if (section.backColor.a === 255) section.backColor = changeAlpha(section.backColor, 254);
 
-      if (this.fadeDarkShadows && section.foreColor.a < 254) {
-        for (const [type, color] of [...section.shadowColors]) {
-          if (color.a > 0 && Math.max(color.r, color.g, color.b) <= NEAR_BLACK_MAX)
-            section.shadowColors.set(type, Color.fromArgb(section.foreColor.a, 0x22, 0x22, 0x22));
-        }
-      }
+      if (this.fadeShadowCutoff != null && section.foreColor.a < (this.fadeShadowCutoff / 100) * 255)
+        section.shadowColors.clear();
 
       for (const [type, color] of [...section.shadowColors]) {
         if (color.a === 0) section.shadowColors.delete(type);

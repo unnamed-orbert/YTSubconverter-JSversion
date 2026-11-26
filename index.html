@@ -26,8 +26,9 @@
         <option value=".srt">.srt (texto simples)</option>
       </select>
     </label>
-    <label class="check" title="O YouTube só deixa a sombra/contorno ficar transparente se a cor for #222222. Com isto ligado, contornos e sombras quase pretos viram #222222 nos passos do fade e somem junto com o texto, sem deixar o rastro preto. Desligado, o resultado é igual ao YTSubConverter original.">
-      <input type="checkbox" id="fadeShadows"> Contorno/sombra escuros somem junto no fade (evita rastro preto)
+    <label class="check" title="O YouTube não deixa a sombra/contorno ficar transparente (só a cor #222222), então no fade o texto some e o contorno fica, deixando um rastro. Com isto ligado, quando a opacidade do texto fica abaixo da porcentagem a sombra/contorno é removida e o texto some sozinho. Desligado, o resultado é igual ao YTSubConverter original.">
+      <input type="checkbox" id="fadeShadows"> No fade, tirar sombra/contorno abaixo de
+      <input type="number" id="fadeCutoff" value="45" min="1" max="100" step="1">% de opacidade
     </label>
   </div>
 

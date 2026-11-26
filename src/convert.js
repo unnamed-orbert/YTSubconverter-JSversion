@@ -46,7 +46,7 @@ export function isExtensionSupported(ext) {
 
 /**
  * Converts a document to the format of the given extension.
- * @param {object} [options] for .ytt/.srv3: {fadeDarkShadows} (see YttDocument)
+ * @param {object} [options] for .ytt/.srv3: {fadeShadowCutoff} (see YttDocument)
  */
 export function convertDocument(doc, newExtension, options = {}) {
   switch (newExtension?.toLowerCase()) {

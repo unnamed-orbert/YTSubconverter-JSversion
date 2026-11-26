@@ -126,6 +126,7 @@ export class YttDocument extends SubtitleDocument {
   save({ bom = false } = {}) {
     this.closeGaps();
     this.mergeSimultaneousLines();
+    this.orderByLayer();
     this.mergeIdenticallyFormattedSections();
     this.applyEnhancements();
     this.mergeIdenticallyFormattedSections();
@@ -142,6 +143,17 @@ export class YttDocument extends SubtitleDocument {
     w.end();
 
     return (bom ? '﻿' : '') + insertLineBreaks(w.toString());
+  }
+
+  /**
+   * Extensão do port: o Layer do .ass decide quem fica por cima (o maior); no mesmo Layer, quem vem depois no
+   * arquivo. No .ytt fica por cima o <p> que vem depois, e o C# ordenava só pelo início, ignorando o Layer: numa
+   * sobreposição, uma linha de Layer baixo que começasse depois cobria a de Layer alto. Aqui os <p> vão por Layer
+   * e, dentro dele, pelo início (ordenação estável: com tudo no Layer 0 nada muda).
+   */
+  orderByLayer() {
+    if (!this.lines.some((l) => (l.layer ?? 0) !== 0)) return;
+    this.lines = [...this.lines].sort((a, b) => (a.layer ?? 0) - (b.layer ?? 0) || a.start - b.start);
   }
 
   // ---------------------------------------------------------------- enhancements

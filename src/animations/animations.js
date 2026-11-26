@@ -81,6 +81,38 @@ export class ForeColorAnimation extends ColorAnimation {
   }
 }
 
+/**
+ * Extensão do port (hierarquia de tags): a troca de cor do karaokê (\\ytkt(Fade), \\kf) vai do \\2c até a cor que o
+ * trecho tem *naquele momento*. No C# ela ia até a cor fixa do \\1c e, como era aplicada por último, apagava o \\t de
+ * cor/opacidade do mesmo trecho (o destaque atropelava a transição). Sem \\t no trecho o resultado é o mesmo de antes.
+ */
+export class KaraokeColorAnimation extends ForeColorAnimation {
+  /** @param {ForeColorAnimation[]} transforms os \\t de cor do trecho, avaliados no mesmo instante */
+  constructor(startTime, startColor, endTime, endColor, acceleration, transforms = []) {
+    super(startTime, startColor, endTime, endColor, acceleration);
+    this.transforms = transforms;
+  }
+
+  /** Cor do trecho (\\1c com os \\t aplicados) no instante `time`. */
+  targetAt(time) {
+    let color = this.endColor;
+    for (const a of this.transforms) {
+      if (time >= a.endTime) color = a.endColor;
+      else if (time > a.startTime) color = a.getColor(a.getProgress ? a.getProgress(time) : (time - a.startTime) / (a.endTime - a.startTime));
+    }
+    return color;
+  }
+
+  apply(line, section, t) {
+    const time = this.startTime + (this.endTime - this.startTime) * t;
+    section.foreColor = this.interpolateColor(this.startColor, this.targetAt(time), t);
+  }
+
+  clone() {
+    return new KaraokeColorAnimation(this.startTime, this.startColor, this.endTime, this.endColor, this.acceleration, this.transforms);
+  }
+}
+
 export class SecondaryColorAnimation extends ColorAnimation {
   apply(line, section, t) {
     section.secondaryColor = this.getColor(t);

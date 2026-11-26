@@ -53,6 +53,8 @@ export class AssSection extends Section {
     this.currentWordShadowColor = Color.Empty;
     /** Karaoke duration (\k) in ms. */
     this.duration = 0;
+    /** Extensão do port: tipo da tag de karaokê da sílaba ('k', 'kf' para \kf/\K, 'ko' para \ko). */
+    this.karaokeTag = 'k';
     /** @type {import('../../animations/animations.js').Animation[]} */
     this.animations = [];
   }
@@ -76,6 +78,7 @@ export class AssSection extends Section {
     this.currentWordOutlineColor = section.currentWordOutlineColor;
     this.currentWordShadowColor = section.currentWordShadowColor;
     this.duration = section.duration;
+    this.karaokeTag = section.karaokeTag;
     this.animations = section.animations.map((a) => a.clone());
   }
 }

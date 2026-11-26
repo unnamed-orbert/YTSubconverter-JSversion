@@ -5,7 +5,7 @@
 //   stepLine, stepIndex, numActiveSections, singingSections }
 // and returns an iterable of lines.
 
-import { BackColorAnimation, GlitchingCharAnimation, ForeColorAnimation, ShadowColorAnimation } from '../../animations/animations.js';
+import { BackColorAnimation, GlitchingCharAnimation, ForeColorAnimation, KaraokeColorAnimation, ShadowColorAnimation } from '../../animations/animations.js';
 import { RubyPart, ShadowType } from '../../enums.js';
 import { changeAlpha, Color } from '../../util/color.js';
 import { CharacterRange } from '../../util/misc.js';
@@ -55,6 +55,11 @@ export class FadeKaraokeType {
   }
 }
 
+/** Os \\t de cor do trecho, com que a troca de cor do karaokê se compõe (ver KaraokeColorAnimation). */
+export function colorTransforms(section) {
+  return section.animations.filter((a) => a instanceof ForeColorAnimation && !(a instanceof KaraokeColorAnimation));
+}
+
 /** Dictionary.GetOrDefault: default(Color) is Color.Empty */
 function getOrEmpty(map, key) {
   return map.has(key) ? map.get(key) : Color.Empty;
@@ -65,7 +70,7 @@ function applyFadeInKaraokeEffect(stepLine, singingSections) {
   for (const s of singingSections) {
     if (s.currentWordForeColor.isEmpty) {
       if (!s.foreColor.equals(s.secondaryColor))
-        s.animations.push(new ForeColorAnimation(stepLine.start, s.secondaryColor, fadeEndTime, s.foreColor, 1));
+        s.animations.push(new KaraokeColorAnimation(stepLine.start, s.secondaryColor, fadeEndTime, s.foreColor, 1, colorTransforms(s)));
     } else if (!s.currentWordForeColor.equals(s.secondaryColor)) {
       s.animations.push(new ForeColorAnimation(stepLine.start, s.secondaryColor, fadeEndTime, s.currentWordForeColor, 1));
     }

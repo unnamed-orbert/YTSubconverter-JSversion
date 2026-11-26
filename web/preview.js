@@ -141,6 +141,8 @@ export class YttPreview {
     this.seek = root.querySelector('.seek');
     this.timeLabel = root.querySelector('.time');
     this.title = root.querySelector('.title');
+    this.player = root.querySelector('.player');
+    this.fsBtn = root.querySelector('.fs');
     this.lines = [];
     this.duration = 0;
     this.time = 0;
@@ -161,9 +163,64 @@ export class YttPreview {
     this.video.addEventListener('play', () => this.setPlaying(true));
     this.video.addEventListener('pause', () => this.setPlaying(false));
     this.stage.addEventListener('click', () => this.toggle());
+    this.stage.addEventListener('dblclick', () => this.toggleFullscreen());
+    this.fsBtn.addEventListener('click', () => this.toggleFullscreen());
+    document.addEventListener('fullscreenchange', () => this.onFullscreenChange());
+    document.addEventListener('webkitfullscreenchange', () => this.onFullscreenChange());
     root.addEventListener('keydown', (e) => {
-      if (e.key === ' ' && e.target.tagName !== 'INPUT') { e.preventDefault(); this.toggle(); }
+      if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+      if (e.key === ' ') { e.preventDefault(); this.toggle(); }
+      else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); this.toggleFullscreen(); }
+      else if (e.key === 'Escape' && this.player.classList.contains('fake-fs')) this.toggleFullscreen();
     });
+    // Em tela cheia, os controles somem depois de um tempo parado e voltam ao mexer o mouse ou tocar.
+    for (const t of ['pointermove', 'pointerdown', 'keydown']) {
+      this.player.addEventListener(t, () => this.showControls());
+    }
+  }
+
+  get isFullscreen() {
+    const el = document.fullscreenElement ?? document.webkitFullscreenElement;
+    return el === this.player || this.player.classList.contains('fake-fs');
+  }
+
+  toggleFullscreen() {
+    const el = document.fullscreenElement ?? document.webkitFullscreenElement;
+    if (el) {
+      (document.exitFullscreen ?? document.webkitExitFullscreen).call(document);
+    } else if (this.player.classList.contains('fake-fs')) {
+      this.player.classList.remove('fake-fs');
+      this.onFullscreenChange();
+    } else {
+      const request = this.player.requestFullscreen ?? this.player.webkitRequestFullscreen;
+      if (request) {
+        // Com tela cheia de verdade, a legenda continua por cima do vídeo (o elemento inteiro vai para a tela).
+        Promise.resolve(request.call(this.player)).catch(() => this.fakeFullscreen());
+      } else {
+        // iPhone: sem tela cheia para elementos; ocupa a janela inteira.
+        this.fakeFullscreen();
+      }
+    }
+  }
+
+  fakeFullscreen() {
+    this.player.classList.add('fake-fs');
+    this.onFullscreenChange();
+  }
+
+  onFullscreenChange() {
+    const fs = this.isFullscreen;
+    this.player.classList.toggle('is-fs', fs);
+    this.fsBtn.textContent = fs ? 'Sair da tela cheia' : 'Tela cheia';
+    this.showControls();
+  }
+
+  showControls() {
+    this.player.classList.remove('idle');
+    clearTimeout(this.idleTimer);
+    if (this.isFullscreen && this.playing) {
+      this.idleTimer = setTimeout(() => this.player.classList.add('idle'), 2500);
+    }
   }
 
   get hasVideo() {
@@ -221,6 +278,7 @@ export class YttPreview {
     this.playBtn.textContent = playing ? 'Pausar' : 'Tocar';
     this.clockOrigin = performance.now() - this.time;
     if (playing) requestAnimationFrame(() => this.tick());
+    this.showControls();
   }
 
   tick() {

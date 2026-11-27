@@ -25,17 +25,33 @@ export function* expandAnimations(document, originalLine) {
   let lastLine = createInitialLine(originalLine, anims);
   if (animClusters.count === 0 || animClusters.values[0].range.start > lastLine.start) yield lastLine;
 
+  // Extensão do port (o C# não faz isso): quando um grupo de animações termina exatamente onde o próximo
+  // começa (ex.: \move que acaba no instante em que o \fad de saída começa), não sobra espaço para a linha
+  // "parada" que aplica o fim (t = 1) do grupo anterior. O último quadro de um grupo nunca chega a t = 1,
+  // então o próximo grupo herdava a posição de um quadro antes do fim e o \move nunca chegava ao destino.
+  // Aqui o próximo grupo parte do estado final do anterior, como se a linha parada existisse com duração 0.
+  let unsettledAnims = null;
   for (let i = 0; i < animClusters.count; i++) {
     const { range: clusterRange, anims: clusterAnims } = animClusters.values[i];
-    for (const frameLine of createFrameLines(document, lastLine, clusterRange, clusterAnims)) {
+    const baseLine = unsettledAnims
+      ? createPostAnimationClusterLine(originalLine, lastLine, lastLine.start, lastLine.end, unsettledAnims)
+      : lastLine;
+    let producedFrames = false;
+    for (const frameLine of createFrameLines(document, baseLine, clusterRange, clusterAnims)) {
       lastLine.end = frameLine.start;
       yield (lastLine = frameLine);
+      producedFrames = true;
     }
+    if (producedFrames) unsettledAnims = null;
 
     const interAnimStart = clusterRange.end;
     const interAnimEnd = i < animClusters.count - 1 ? animClusters.values[i + 1].range.start : originalLine.end;
-    if (interAnimEnd > interAnimStart)
+    if (interAnimEnd > interAnimStart) {
       yield (lastLine = createPostAnimationClusterLine(originalLine, lastLine, interAnimStart, interAnimEnd, clusterAnims));
+      unsettledAnims = null;
+    } else if (producedFrames) {
+      unsettledAnims = clusterAnims;
+    }
   }
 
   lastLine.end = originalLine.end;

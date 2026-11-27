@@ -36,8 +36,10 @@ export class YttDocument extends SubtitleDocument {
    *   do corte (fadeShadowCutoff ou 40%), a sombra sai (ver letShadowsFollowText e shadowFade). E as cópias que o
    *   .ytt cria para cada tipo de sombra deixam de somar a opacidade do texto (cada uma fica com a fração certa).
    */
-  constructor(doc, { fadeShadowCutoff = null, tagHierarchy = false, shadowFade = 'cor', noWrapPadding = false } = {}) {
+  constructor(doc, { fadeShadowCutoff = null, tagHierarchy = false, shadowFade = 'cor', noWrapPadding = false, fitEdges = false } = {}) {
     super(doc);
+    /** Âncora trocada para o lado perto da borda (ver getWindowPosition). Extensão do port, desligada por padrão. */
+    this.fitEdges = fitEdges;
     /** Preenchimento sem pontos de quebra (ver NOWRAP_PADDING_SPACE). Extensão do port, desligada por padrão. */
     this.noWrapPadding = noWrapPadding;
     this.fadeShadowCutoff = fadeShadowCutoff;
@@ -436,13 +438,55 @@ export class YttDocument extends SubtitleDocument {
   }
 
   writeWindowPosition(w, id, position) {
-    const pos = this.getYouTubePosition(position);
+    const pos = this.getWindowPosition(position);
     w.start('wp');
     w.attr('id', id);
-    w.attr('ap', getAnchorPointId(position.anchorPoint));
+    w.attr('ap', getAnchorPointId(pos.anchorPoint));
     w.attr('ah', pos.x);
     w.attr('av', pos.y);
     w.end();
+  }
+
+  /**
+   * Âncora e posição (ah/av) do <wp> da linha. Com fitEdges (extensão do port), troca a âncora quando a legenda
+   * ficaria espremida perto da borda.
+   *
+   * O player do YouTube (captions.js, 2026) limita a largura da janela pelo espaço até a borda, medido a partir do
+   * ponto de âncora (l = ah * 0.96 + 2, em % da largura):
+   *   âncora à esquerda: max-width = 98 - l;  à direita: l - 2;  no centro: 2 * min(l - 2, 98 - l).
+   * Uma coluna de letras com \an2/\an5 em x = 48 px fica com 1,9% de largura: menor que uma letra. O texto quebra
+   * em todo lugar possível e a legenda cresce para cima (só as últimas letras aparecem, com vãos enormes).
+   * Com fitEdges, se o texto (largura estimada) não cabe, a âncora vai para o lado da borda e a posição é deslocada
+   * para o texto ficar no mesmo lugar: a borda da caixa vira o ponto de âncora e o limite passa a ser a tela toda.
+   * A justificação (ws) continua a da âncora original, então as linhas seguem centralizadas entre si.
+   */
+  getWindowPosition(line) {
+    const pos = this.getYouTubePosition(line);
+    const result = { anchorPoint: line.anchorPoint, x: pos.x, y: pos.y };
+    if (!this.fitEdges || line.verticalTextType !== VerticalTextType.None) return result;
+
+    const width = estimateTextWidth(line, this.videoDimensions);
+    if (width <= 0) return result;
+    const need = width * 1.1 + 1;
+    const l = pos.x * 0.96 + 2;
+    const [col, row] = anchorColumnRow(line.anchorPoint);
+    let newCol = col;
+    let newL = l;
+    if (col === 1 && 2 * Math.min(l - 2, 98 - l) < need) {
+      // centro: vai para o lado da borda mais próxima
+      if (l < 50) { newCol = 0; newL = l - width / 2; } else { newCol = 2; newL = l + width / 2; }
+    } else if (col === 0 && 98 - l < need) {
+      newCol = 2; newL = l + width;
+    } else if (col === 2 && l - 2 < need) {
+      newCol = 0; newL = l - width;
+    }
+    if (newCol === col) return result;
+    // Obs.: com âncora à esquerda o player divide a posição por (1 + 2 * fontSizeIncrement) da janela, mas esse
+    // tamanho vem do pen do <p> (só existe em linha de um trecho; com o preenchimento nunca é o caso) ou da
+    // configuração de quem assiste. Com o padrão (0) nada muda, então não há correção aqui.
+    result.anchorPoint = ANCHOR_POINT_IDS[row * 3 + newCol];
+    result.x = Math.min(Math.max(Math.round((newL - 2) / 0.96), 0), 100);
+    return result;
   }
 
   writeBody(w, positions, windowStyles, pens) {
@@ -464,8 +508,8 @@ export class YttDocument extends SubtitleDocument {
   }
 
   linePositionKey(line) {
-    const pos = this.getYouTubePosition(line);
-    return `${line.anchorPoint}|${pos.x}|${pos.y}`;
+    const pos = this.getWindowPosition(line);
+    return `${pos.anchorPoint}|${pos.x}|${pos.y}`;
   }
 }
 
@@ -864,6 +908,45 @@ export function getAnchorPointFromId(id) {
   const ap = ANCHOR_POINT_IDS[id];
   if (ap === undefined) throw new RangeError(`Invalid anchor point id: ${id}`);
   return ap;
+}
+
+/** [coluna (0 esquerda, 1 centro, 2 direita), linha (0 cima, 1 meio, 2 baixo)] da âncora. */
+function anchorColumnRow(anchorPoint) {
+  const id = getAnchorPointId(anchorPoint);
+  return [id % 3, Math.floor(id / 3)];
+}
+
+/**
+ * Largura aproximada (em % da largura do vídeo) da linha mais larga do texto como o YouTube desenha: fonte de 16 px
+ * a cada 360 px de altura do player (captions.js) vezes a escala do trecho, com larguras médias de caractere.
+ */
+function estimateTextWidth(line, videoDimensions) {
+  const emPercent = (16 / 360) * (videoDimensions.height / videoDimensions.width) * 100;
+  let widest = 0;
+  let current = 0;
+  for (const section of line.sections) {
+    const scale = section.offset !== OffsetType.Regular ? section.scale * 0.8 : section.scale;
+    for (const ch of section.text) {
+      if (ch === '\n') {
+        widest = Math.max(widest, current);
+        current = 0;
+        continue;
+      }
+      current += charWidthEm(ch, section.bold) * scale * emPercent;
+    }
+  }
+  return Math.max(widest, current);
+}
+
+function charWidthEm(ch, bold) {
+  if (/[\u200b\u2060\r\ufeff]/.test(ch)) return 0;
+  let w;
+  if (ch === ' ' || ch === '\u00a0') w = 0.25;
+  else if (/[\u1100-\u11ff\u2e80-\ua4cf\uac00-\ud7af\uf900-\ufaff\uff00-\uffef]/.test(ch)) w = 1;
+  else if (/[iIl.,:;'!|]/.test(ch)) w = 0.3;
+  else if (/[A-Z0-9MWmw\u00c0-\u00de]/.test(ch)) w = 0.68;
+  else w = 0.55;
+  return bold ? w * 1.05 : w;
 }
 
 function getJustificationId(anchorPoint) {

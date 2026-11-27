@@ -33,9 +33,9 @@
   <nav class="toc"><ol>
     <li><a href="#pt-formatos">Formatos e detecção</a></li>
     <li><a href="#pt-conversoes">Conversões</a></li>
-    <li><a href="#pt-estilos">Estilos do .ass</a></li>
     <li><a href="#pt-tags">Tags do .ass</a></li>
     <li><a href="#pt-srt">Tags do .srt</a></li>
+    <li><a href="#pt-estilos">Estilos do .ass</a></li>
     <li><a href="#pt-opcoes">Opções da página</a></li>
     <li><a href="#pt-preview">Preview, tela cheia e debug</a></li>
     <li><a href="#pt-player">Como o player do YouTube desenha</a></li>
@@ -71,21 +71,22 @@
   </table></div>
   <p>O nome do arquivo baixado é o da entrada com a nova extensão (<code>legenda.json3.txt</code> vira <code>legenda.srt</code>). Os arquivos de texto saem em UTF-8 com BOM.</p>
 
-  <h2 id="pt-estilos">Estilos do .ass</h2>
-  <ul>
-    <li><b>Fonte.</b> O YouTube só aceita 7 fontes: Roboto (padrão), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva e Carrois Gothic SC. Outra fonte vira Roboto.</li>
-    <li><b>Tamanho.</b> O estilo "Default" (ou o primeiro, se não houver "Default") fica sempre com o tamanho padrão do YouTube e os outros são relativos a ele: Default 15 e outro estilo 30 dão 100% e 200%. O mínimo é 75%, e o app de Android ignora o tamanho.</li>
-    <li><b>Negrito, itálico, sublinhado</b> e as quatro cores: texto, karaokê não cantado, contorno e sombra.</li>
-    <li><b>Alinhamento.</b> Além da posição, define para onde a legenda se mexe quando o mouse passa no vídeo: 7/8/9 descem, 4/5/6 ficam e 1/2/3 sobem.</li>
-    <li><b>Contorno e sombra.</b> Só importa se o valor é 0 ou maior que 0. O <b>tipo</b> de sombra vem do nome do estilo:
-      <code>YTPlain</code> (sem), <code>YTGlow</code> (brilho, igual ao contorno), <code>YTSoftShadow</code> (sombra suave), <code>YTHardShadow</code> (sombra dura) e <code>YTBevel</code> (relevo).
-      As versões <code>…Box</code> têm fundo. Para combinar vários tipos no mesmo estilo, junte os nomes (<code>YTGlowSoftShadow</code>) ou use um <code>StyleOptions.xml</code> do YTSubConverter original.</li>
-    <li><b>Layer.</b> Quando há linhas fora do Layer 0, a de Layer maior fica por cima no .ytt (no mesmo Layer, a que começa depois).</li>
-  </ul>
-
   <h2 id="pt-tags">Tags do .ass</h2>
+  <p><b>Na prática, quase todo o visual de uma legenda vem das tags em linha</b> (<code>{\…}</code>). O estilo da linha só dá o ponto de partida: fonte, cores, alinhamento e o tipo de sombra.</p>
   <p>A legenda <a href="../exemplos/demonstracao-tags.ass">demonstracao-tags.ass</a> mostra todas elas, uma tela por grupo (o <a href="../exemplos/demonstracao-tags.ytt">.ytt convertido</a> pode ser aberto no preview).
     As coordenadas usam a resolução do script (<code>PlayResX</code>/<code>PlayResY</code>, por exemplo 1280×720), as cores são <code>&amp;HBBGGRR&amp;</code> e a transparência vai de <code>&amp;H00&amp;</code> (opaco) a <code>&amp;HFF&amp;</code> (invisível).</p>
+
+  <h3>Como cada tag sai no .ytt</h3>
+  <div class="table"><table>
+    <tr><th>No .ass</th><th>No .ytt</th></tr>
+    <tr><td><code>\b</code> <code>\i</code> <code>\u</code> <code>\fn</code> <code>\fs</code> <code>\c</code> <code>\1a</code></td><td>Atributos do <code>&lt;pen&gt;</code> do trecho (<code>b</code>, <code>i</code>, <code>u</code>, <code>fs</code>, <code>sz</code>, <code>fc</code>, <code>fo</code>). Cada trecho com aparência diferente vira um <code>&lt;s&gt;</code> com o seu pen.</td></tr>
+    <tr><td><code>\3c</code> <code>\4c</code></td><td><code>et</code> (tipo de borda, que vem do nome do estilo) e <code>ec</code> (cor). Uma linha com vários tipos de sombra é escrita uma vez por tipo. Se o estilo não tem contorno nem sombra, essas cores não aparecem.</td></tr>
+    <tr><td><code>\3a</code> (estilo <code>…Box</code>)</td><td><code>bc</code> e <code>bo</code>: cor e opacidade do fundo.</td></tr>
+    <tr><td><code>\an</code> <code>\pos</code></td><td><code>&lt;wp&gt;</code> (<code>ap</code>, <code>ah</code>, <code>av</code>) e <code>&lt;ws&gt;</code> (alinhamento). <code>ah</code>/<code>av</code> são porcentagens inteiras (1 unidade ≈ 0,96% da tela), então a posição arredonda.</td></tr>
+    <tr><td><code>\fad</code> <code>\fade</code> <code>\move</code> <code>\t</code> <code>\kf</code> <code>\ytktFade</code> <code>\ytshake</code> <code>\ytchroma</code></td><td>O .ytt não tem animação: a linha vira uma sequência de <code>&lt;p&gt;</code>, um estado a cada 2 quadros (uns 15 por segundo), cada um com as cores, opacidades e a posição daquele instante. Por isso efeitos longos geram arquivos grandes.</td></tr>
+    <tr><td><code>\k</code> <code>\ko</code></td><td>Cada sílaba vira um <code>&lt;s&gt;</code> e cada troca de sílaba, um <code>&lt;p&gt;</code> novo. Com <code>\2a</code> totalmente transparente, usa o karaokê nativo: um <code>&lt;p&gt;</code> só, em que cada <code>&lt;s&gt;</code> tem o tempo <code>t</code> em que aparece.</td></tr>
+    <tr><td><code>\bord</code> <code>\shad</code> <code>\be</code> <code>\blur</code> <code>\fscx</code> <code>\fscy</code> <code>\fsp</code> <code>\frz</code> <code>\frx</code> <code>\fry</code> <code>\fax</code> <code>\clip</code> <code>\p</code></td><td>Não existem no .ytt e são ignoradas. A espessura do contorno e da sombra não muda nada: só importa se o estilo tem contorno ou sombra.</td></tr>
+  </table></div>
 
   <h3>Texto e cor</h3>
   <div class="table"><table>
@@ -159,6 +160,19 @@
 
   <h2 id="pt-srt">Tags do .srt</h2>
   <p>O .srt aceita <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code> e <code>&lt;font color="#rrggbb"&gt;</code>. Não há posição: a legenda fica sempre embaixo, no centro. Veja <a href="../exemplos/demonstracao-tags.srt">demonstracao-tags.srt</a>.</p>
+
+  <h2 id="pt-estilos">Estilos do .ass</h2>
+  <p>O estilo de cada linha é o ponto de partida das tags. O que só o estilo define é o tipo de sombra.</p>
+  <ul>
+    <li><b>Fonte.</b> O YouTube só aceita 7 fontes: Roboto (padrão), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva e Carrois Gothic SC. Outra fonte vira Roboto.</li>
+    <li><b>Tamanho.</b> O estilo "Default" (ou o primeiro, se não houver "Default") fica sempre com o tamanho padrão do YouTube e os outros são relativos a ele: Default 15 e outro estilo 30 dão 100% e 200%. O mínimo é 75%, e o app de Android ignora o tamanho.</li>
+    <li><b>Negrito, itálico, sublinhado</b> e as quatro cores: texto, karaokê não cantado, contorno e sombra.</li>
+    <li><b>Alinhamento.</b> Além da posição, define para onde a legenda se mexe quando o mouse passa no vídeo: 7/8/9 descem, 4/5/6 ficam e 1/2/3 sobem.</li>
+    <li><b>Contorno e sombra.</b> Só importa se o valor é 0 ou maior que 0. O <b>tipo</b> de sombra vem do nome do estilo:
+      <code>YTPlain</code> (sem), <code>YTGlow</code> (brilho, igual ao contorno), <code>YTSoftShadow</code> (sombra suave), <code>YTHardShadow</code> (sombra dura) e <code>YTBevel</code> (relevo).
+      As versões <code>…Box</code> têm fundo. Para combinar vários tipos no mesmo estilo, junte os nomes (<code>YTGlowSoftShadow</code>).</li>
+    <li><b>Layer.</b> Quando há linhas fora do Layer 0, a de Layer maior fica por cima no .ytt (no mesmo Layer, a que começa depois).</li>
+  </ul>
 
   <h2 id="pt-opcoes">Opções da página</h2>
   <div class="table"><table>
@@ -264,12 +278,13 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
   <h3>Deste port</h3>
   <ul>
     <li>.ttml ainda não é suportado. .sbv e .json3 só são lidos.</li>
-    <li>A saída .ass não tem o modo "visual" do original (<code>VisualizingAssDocument</code>).</li>
     <li>O preview é uma aproximação do player do YouTube.</li>
     <li>A recuperação de tags é heurística: tempos, raios e posições saem aproximados, e efeitos misturados podem ser lidos como outra tag. Use o comparador para ver onde ficou diferente.</li>
     <li>Na página, a correção de duplicação só vale para a saída .srt (na linha de comando, <code>--corrigir-duplicacao</code> aplica nas outras).</li>
     <li>As opções experimentais e a simulação do player foram feitas a partir do <code>captions.js</code> de 2026 e podem deixar de valer se o YouTube mudar o player.</li>
   </ul>
+
+  <p class="tip">Raramente usados e não portados: o modo "visual" da saída .ass do original (<code>VisualizingAssDocument</code>) e a janela de opções de estilo. Um <code>StyleOptions.xml</code> do original continua sendo lido, se você tiver um.</p>
   </article>
 
   <article data-lang="en" lang="en" hidden>
@@ -280,9 +295,9 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
   <nav class="toc"><ol>
     <li><a href="#en-formats">Formats and detection</a></li>
     <li><a href="#en-conversions">Conversions</a></li>
-    <li><a href="#en-styles">.ass styles</a></li>
     <li><a href="#en-tags">.ass tags</a></li>
     <li><a href="#en-srt">.srt tags</a></li>
+    <li><a href="#en-styles">.ass styles</a></li>
     <li><a href="#en-options">Page options</a></li>
     <li><a href="#en-preview">Preview, full screen and debug</a></li>
     <li><a href="#en-player">How the YouTube player draws</a></li>
@@ -318,21 +333,22 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
   </table></div>
   <p>The downloaded file is named after the input with the new extension (<code>subtitle.json3.txt</code> becomes <code>subtitle.srt</code>). Text files are written as UTF-8 with a BOM.</p>
 
-  <h2 id="en-styles">.ass styles</h2>
-  <ul>
-    <li><b>Font.</b> YouTube only allows 7 fonts: Roboto (default), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva and Carrois Gothic SC. Any other font becomes Roboto.</li>
-    <li><b>Size.</b> The "Default" style (or the first one, if there is no "Default") always gets YouTube's standard size, and the others are relative to it: Default 15 and another style at 30 give 100% and 200%. The minimum is 75%, and the Android app ignores the size.</li>
-    <li><b>Bold, italic, underline</b> and the four colors: text, unsung karaoke, outline and shadow.</li>
-    <li><b>Alignment.</b> Besides the position, it sets which way the subtitle moves when the mouse hovers over the video: 7/8/9 move down, 4/5/6 stay put and 1/2/3 move up.</li>
-    <li><b>Outline and shadow.</b> Only whether the value is 0 or greater than 0 matters. The shadow <b>type</b> comes from the style name:
-      <code>YTPlain</code> (none), <code>YTGlow</code> (glow, same as outline), <code>YTSoftShadow</code>, <code>YTHardShadow</code> and <code>YTBevel</code>.
-      The <code>…Box</code> versions have a background. To combine several types in one style, join the names (<code>YTGlowSoftShadow</code>) or use a <code>StyleOptions.xml</code> from the original YTSubConverter.</li>
-    <li><b>Layer.</b> When some lines are outside Layer 0, the higher Layer is drawn on top in the .ytt (within the same Layer, the one that starts later).</li>
-  </ul>
-
   <h2 id="en-tags">.ass tags</h2>
+  <p><b>In practice, almost all of a subtitle's look comes from inline tags</b> (<code>{\…}</code>). The line's style is only the starting point: font, colors, alignment and the shadow type.</p>
   <p>The <a href="../exemplos/demonstracao-tags.ass">demonstracao-tags.ass</a> subtitle shows all of them, one screen per group (the <a href="../exemplos/demonstracao-tags.ytt">converted .ytt</a> can be opened in the preview).
     Coordinates use the script resolution (<code>PlayResX</code>/<code>PlayResY</code>, for example 1280×720), colors are <code>&amp;HBBGGRR&amp;</code> and transparency goes from <code>&amp;H00&amp;</code> (opaque) to <code>&amp;HFF&amp;</code> (invisible).</p>
+
+  <h3>How each tag comes out in the .ytt</h3>
+  <div class="table"><table>
+    <tr><th>In the .ass</th><th>In the .ytt</th></tr>
+    <tr><td><code>\b</code> <code>\i</code> <code>\u</code> <code>\fn</code> <code>\fs</code> <code>\c</code> <code>\1a</code></td><td>Attributes of the segment's <code>&lt;pen&gt;</code> (<code>b</code>, <code>i</code>, <code>u</code>, <code>fs</code>, <code>sz</code>, <code>fc</code>, <code>fo</code>). Each segment that looks different becomes an <code>&lt;s&gt;</code> with its own pen.</td></tr>
+    <tr><td><code>\3c</code> <code>\4c</code></td><td><code>et</code> (edge type, which comes from the style name) and <code>ec</code> (color). A line with several shadow types is written once per type. If the style has no outline or shadow, these colors don't show.</td></tr>
+    <tr><td><code>\3a</code> (<code>…Box</code> style)</td><td><code>bc</code> and <code>bo</code>: background color and opacity.</td></tr>
+    <tr><td><code>\an</code> <code>\pos</code></td><td><code>&lt;wp&gt;</code> (<code>ap</code>, <code>ah</code>, <code>av</code>) and <code>&lt;ws&gt;</code> (alignment). <code>ah</code>/<code>av</code> are whole percentages (1 unit ≈ 0.96% of the screen), so positions get rounded.</td></tr>
+    <tr><td><code>\fad</code> <code>\fade</code> <code>\move</code> <code>\t</code> <code>\kf</code> <code>\ytktFade</code> <code>\ytshake</code> <code>\ytchroma</code></td><td>The .ytt has no animation: the line becomes a sequence of <code>&lt;p&gt;</code>, one state every 2 frames (about 15 per second), each with the colors, opacities and position of that moment. That's why long effects make large files.</td></tr>
+    <tr><td><code>\k</code> <code>\ko</code></td><td>Each syllable becomes an <code>&lt;s&gt;</code> and each syllable change a new <code>&lt;p&gt;</code>. With <code>\2a</code> fully transparent, it uses native karaoke: a single <code>&lt;p&gt;</code> where each <code>&lt;s&gt;</code> has the time <code>t</code> at which it appears.</td></tr>
+    <tr><td><code>\bord</code> <code>\shad</code> <code>\be</code> <code>\blur</code> <code>\fscx</code> <code>\fscy</code> <code>\fsp</code> <code>\frz</code> <code>\frx</code> <code>\fry</code> <code>\fax</code> <code>\clip</code> <code>\p</code></td><td>They don't exist in the .ytt and are ignored. Outline and shadow thickness change nothing: only whether the style has an outline or shadow matters.</td></tr>
+  </table></div>
 
   <h3>Text and color</h3>
   <div class="table"><table>
@@ -406,6 +422,19 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
 
   <h2 id="en-srt">.srt tags</h2>
   <p>The .srt accepts <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code> and <code>&lt;font color="#rrggbb"&gt;</code>. There is no position: the subtitle is always at the bottom center. See <a href="../exemplos/demonstracao-tags.srt">demonstracao-tags.srt</a>.</p>
+
+  <h2 id="en-styles">.ass styles</h2>
+  <p>Each line's style is the starting point for the tags. The only thing just the style sets is the shadow type.</p>
+  <ul>
+    <li><b>Font.</b> YouTube only allows 7 fonts: Roboto (default), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva and Carrois Gothic SC. Any other font becomes Roboto.</li>
+    <li><b>Size.</b> The "Default" style (or the first one, if there is no "Default") always gets YouTube's standard size, and the others are relative to it: Default 15 and another style at 30 give 100% and 200%. The minimum is 75%, and the Android app ignores the size.</li>
+    <li><b>Bold, italic, underline</b> and the four colors: text, unsung karaoke, outline and shadow.</li>
+    <li><b>Alignment.</b> Besides the position, it sets which way the subtitle moves when the mouse hovers over the video: 7/8/9 move down, 4/5/6 stay put and 1/2/3 move up.</li>
+    <li><b>Outline and shadow.</b> Only whether the value is 0 or greater than 0 matters. The shadow <b>type</b> comes from the style name:
+      <code>YTPlain</code> (none), <code>YTGlow</code> (glow, same as outline), <code>YTSoftShadow</code>, <code>YTHardShadow</code> and <code>YTBevel</code>.
+      The <code>…Box</code> versions have a background. To combine several types in one style, join the names (<code>YTGlowSoftShadow</code>).</li>
+    <li><b>Layer.</b> When some lines are outside Layer 0, the higher Layer is drawn on top in the .ytt (within the same Layer, the one that starts later).</li>
+  </ul>
 
   <h2 id="en-options">Page options</h2>
   <div class="table"><table>
@@ -511,12 +540,13 @@ const doc = YttDocument.parse(yttText);</code></pre>
   <h3>This port's</h3>
   <ul>
     <li>.ttml isn't supported yet. .sbv and .json3 are read only.</li>
-    <li>The .ass output doesn't have the original's "visual" mode (<code>VisualizingAssDocument</code>).</li>
     <li>The preview is an approximation of the YouTube player.</li>
     <li>Tag recovery is heuristic: timings, radii and positions are approximate, and mixed effects may be read as another tag. Use the comparison to see where it differs.</li>
     <li>On the page, the duplication fix only applies to .srt output (on the command line, <code>--corrigir-duplicacao</code> applies it to the others).</li>
     <li>The experimental options and the player simulation are based on the 2026 <code>captions.js</code> and may stop matching if YouTube changes its player.</li>
   </ul>
+
+  <p class="tip">Rarely used and not ported: the original's "visual" .ass output mode (<code>VisualizingAssDocument</code>) and the style options window. A <code>StyleOptions.xml</code> from the original is still read, if you have one.</p>
   </article>
 
   <article data-lang="es" lang="es" hidden>
@@ -527,9 +557,9 @@ const doc = YttDocument.parse(yttText);</code></pre>
   <nav class="toc"><ol>
     <li><a href="#es-formatos">Formatos y detección</a></li>
     <li><a href="#es-conversiones">Conversiones</a></li>
-    <li><a href="#es-estilos">Estilos del .ass</a></li>
     <li><a href="#es-etiquetas">Etiquetas del .ass</a></li>
     <li><a href="#es-srt">Etiquetas del .srt</a></li>
+    <li><a href="#es-estilos">Estilos del .ass</a></li>
     <li><a href="#es-opciones">Opciones de la página</a></li>
     <li><a href="#es-preview">Vista previa, pantalla completa y depuración</a></li>
     <li><a href="#es-player">Cómo dibuja el reproductor de YouTube</a></li>
@@ -565,21 +595,22 @@ const doc = YttDocument.parse(yttText);</code></pre>
   </table></div>
   <p>El archivo descargado se llama como la entrada con la nueva extensión (<code>subtitulo.json3.txt</code> pasa a <code>subtitulo.srt</code>). Los archivos de texto se guardan en UTF-8 con BOM.</p>
 
-  <h2 id="es-estilos">Estilos del .ass</h2>
-  <ul>
-    <li><b>Fuente.</b> YouTube solo acepta 7 fuentes: Roboto (predeterminada), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva y Carrois Gothic SC. Cualquier otra pasa a Roboto.</li>
-    <li><b>Tamaño.</b> El estilo "Default" (o el primero, si no hay "Default") siempre tiene el tamaño estándar de YouTube y los demás son relativos a él: Default 15 y otro estilo 30 dan 100% y 200%. El mínimo es 75%, y la app de Android ignora el tamaño.</li>
-    <li><b>Negrita, cursiva, subrayado</b> y los cuatro colores: texto, karaoke no cantado, contorno y sombra.</li>
-    <li><b>Alineación.</b> Además de la posición, define hacia dónde se mueve el subtítulo cuando el ratón pasa sobre el video: 7/8/9 bajan, 4/5/6 se quedan y 1/2/3 suben.</li>
-    <li><b>Contorno y sombra.</b> Solo importa si el valor es 0 o mayor que 0. El <b>tipo</b> de sombra viene del nombre del estilo:
-      <code>YTPlain</code> (ninguna), <code>YTGlow</code> (brillo, igual al contorno), <code>YTSoftShadow</code> (sombra suave), <code>YTHardShadow</code> (sombra dura) y <code>YTBevel</code> (relieve).
-      Las versiones <code>…Box</code> tienen fondo. Para combinar varios tipos en el mismo estilo, junta los nombres (<code>YTGlowSoftShadow</code>) o usa un <code>StyleOptions.xml</code> del YTSubConverter original.</li>
-    <li><b>Layer.</b> Cuando hay líneas fuera del Layer 0, la de Layer mayor queda encima en el .ytt (en el mismo Layer, la que empieza después).</li>
-  </ul>
-
   <h2 id="es-etiquetas">Etiquetas del .ass</h2>
+  <p><b>En la práctica, casi todo el aspecto de un subtítulo viene de las etiquetas en línea</b> (<code>{\…}</code>). El estilo de la línea solo da el punto de partida: fuente, colores, alineación y el tipo de sombra.</p>
   <p>El subtítulo <a href="../exemplos/demonstracao-tags.ass">demonstracao-tags.ass</a> las muestra todas, una pantalla por grupo (el <a href="../exemplos/demonstracao-tags.ytt">.ytt convertido</a> se puede abrir en la vista previa).
     Las coordenadas usan la resolución del script (<code>PlayResX</code>/<code>PlayResY</code>, por ejemplo 1280×720), los colores son <code>&amp;HBBGGRR&amp;</code> y la transparencia va de <code>&amp;H00&amp;</code> (opaco) a <code>&amp;HFF&amp;</code> (invisible).</p>
+
+  <h3>Cómo sale cada etiqueta en el .ytt</h3>
+  <div class="table"><table>
+    <tr><th>En el .ass</th><th>En el .ytt</th></tr>
+    <tr><td><code>\b</code> <code>\i</code> <code>\u</code> <code>\fn</code> <code>\fs</code> <code>\c</code> <code>\1a</code></td><td>Atributos del <code>&lt;pen&gt;</code> del fragmento (<code>b</code>, <code>i</code>, <code>u</code>, <code>fs</code>, <code>sz</code>, <code>fc</code>, <code>fo</code>). Cada fragmento con aspecto distinto se vuelve un <code>&lt;s&gt;</code> con su propio pen.</td></tr>
+    <tr><td><code>\3c</code> <code>\4c</code></td><td><code>et</code> (tipo de borde, que viene del nombre del estilo) y <code>ec</code> (color). Una línea con varios tipos de sombra se escribe una vez por tipo. Si el estilo no tiene contorno ni sombra, estos colores no aparecen.</td></tr>
+    <tr><td><code>\3a</code> (estilo <code>…Box</code>)</td><td><code>bc</code> y <code>bo</code>: color y opacidad del fondo.</td></tr>
+    <tr><td><code>\an</code> <code>\pos</code></td><td><code>&lt;wp&gt;</code> (<code>ap</code>, <code>ah</code>, <code>av</code>) y <code>&lt;ws&gt;</code> (alineación). <code>ah</code>/<code>av</code> son porcentajes enteros (1 unidad ≈ 0,96% de la pantalla), así que la posición se redondea.</td></tr>
+    <tr><td><code>\fad</code> <code>\fade</code> <code>\move</code> <code>\t</code> <code>\kf</code> <code>\ytktFade</code> <code>\ytshake</code> <code>\ytchroma</code></td><td>El .ytt no tiene animación: la línea se vuelve una secuencia de <code>&lt;p&gt;</code>, un estado cada 2 fotogramas (unos 15 por segundo), cada uno con los colores, opacidades y la posición de ese instante. Por eso los efectos largos generan archivos grandes.</td></tr>
+    <tr><td><code>\k</code> <code>\ko</code></td><td>Cada sílaba se vuelve un <code>&lt;s&gt;</code> y cada cambio de sílaba, un <code>&lt;p&gt;</code> nuevo. Con <code>\2a</code> totalmente transparente, usa el karaoke nativo: un solo <code>&lt;p&gt;</code> en el que cada <code>&lt;s&gt;</code> tiene el tiempo <code>t</code> en que aparece.</td></tr>
+    <tr><td><code>\bord</code> <code>\shad</code> <code>\be</code> <code>\blur</code> <code>\fscx</code> <code>\fscy</code> <code>\fsp</code> <code>\frz</code> <code>\frx</code> <code>\fry</code> <code>\fax</code> <code>\clip</code> <code>\p</code></td><td>No existen en el .ytt y se ignoran. El grosor del contorno y de la sombra no cambia nada: solo importa si el estilo tiene contorno o sombra.</td></tr>
+  </table></div>
 
   <h3>Texto y color</h3>
   <div class="table"><table>
@@ -653,6 +684,19 @@ const doc = YttDocument.parse(yttText);</code></pre>
 
   <h2 id="es-srt">Etiquetas del .srt</h2>
   <p>El .srt acepta <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code> y <code>&lt;font color="#rrggbb"&gt;</code>. No hay posición: el subtítulo queda siempre abajo, en el centro. Mira <a href="../exemplos/demonstracao-tags.srt">demonstracao-tags.srt</a>.</p>
+
+  <h2 id="es-estilos">Estilos del .ass</h2>
+  <p>El estilo de cada línea es el punto de partida de las etiquetas. Lo único que define solo el estilo es el tipo de sombra.</p>
+  <ul>
+    <li><b>Fuente.</b> YouTube solo acepta 7 fuentes: Roboto (predeterminada), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva y Carrois Gothic SC. Cualquier otra pasa a Roboto.</li>
+    <li><b>Tamaño.</b> El estilo "Default" (o el primero, si no hay "Default") siempre tiene el tamaño estándar de YouTube y los demás son relativos a él: Default 15 y otro estilo 30 dan 100% y 200%. El mínimo es 75%, y la app de Android ignora el tamaño.</li>
+    <li><b>Negrita, cursiva, subrayado</b> y los cuatro colores: texto, karaoke no cantado, contorno y sombra.</li>
+    <li><b>Alineación.</b> Además de la posición, define hacia dónde se mueve el subtítulo cuando el ratón pasa sobre el video: 7/8/9 bajan, 4/5/6 se quedan y 1/2/3 suben.</li>
+    <li><b>Contorno y sombra.</b> Solo importa si el valor es 0 o mayor que 0. El <b>tipo</b> de sombra viene del nombre del estilo:
+      <code>YTPlain</code> (ninguna), <code>YTGlow</code> (brillo, igual al contorno), <code>YTSoftShadow</code> (sombra suave), <code>YTHardShadow</code> (sombra dura) y <code>YTBevel</code> (relieve).
+      Las versiones <code>…Box</code> tienen fondo. Para combinar varios tipos en el mismo estilo, junta los nombres (<code>YTGlowSoftShadow</code>).</li>
+    <li><b>Layer.</b> Cuando hay líneas fuera del Layer 0, la de Layer mayor queda encima en el .ytt (en el mismo Layer, la que empieza después).</li>
+  </ul>
 
   <h2 id="es-opciones">Opciones de la página</h2>
   <div class="table"><table>
@@ -758,12 +802,13 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
   <h3>De este port</h3>
   <ul>
     <li>.ttml todavía no es compatible. .sbv y .json3 solo se leen.</li>
-    <li>La salida .ass no tiene el modo "visual" del original (<code>VisualizingAssDocument</code>).</li>
     <li>La vista previa es una aproximación del reproductor de YouTube.</li>
     <li>La recuperación de etiquetas es heurística: tiempos, radios y posiciones son aproximados, y efectos mezclados pueden leerse como otra etiqueta. Usa el comparador para ver dónde difiere.</li>
     <li>En la página, la corrección de duplicación solo vale para la salida .srt (en la línea de comandos, <code>--corrigir-duplicacao</code> la aplica a las demás).</li>
     <li>Las opciones experimentales y la simulación del reproductor se basan en el <code>captions.js</code> de 2026 y pueden dejar de valer si YouTube cambia el reproductor.</li>
   </ul>
+
+  <p class="tip">Poco usados y no portados: el modo "visual" de la salida .ass del original (<code>VisualizingAssDocument</code>) y la ventana de opciones de estilo. Un <code>StyleOptions.xml</code> del original se sigue leyendo, si tienes uno.</p>
   </article>
 
   <article data-lang="fr" lang="fr" hidden>
@@ -774,9 +819,9 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
   <nav class="toc"><ol>
     <li><a href="#fr-formats">Formats et détection</a></li>
     <li><a href="#fr-conversions">Conversions</a></li>
-    <li><a href="#fr-styles">Styles du .ass</a></li>
     <li><a href="#fr-balises">Balises du .ass</a></li>
     <li><a href="#fr-srt">Balises du .srt</a></li>
+    <li><a href="#fr-styles">Styles du .ass</a></li>
     <li><a href="#fr-options">Options de la page</a></li>
     <li><a href="#fr-apercu">Aperçu, plein écran et débogage</a></li>
     <li><a href="#fr-player">Comment le lecteur YouTube dessine</a></li>
@@ -812,21 +857,22 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
   </table></div>
   <p>Le fichier téléchargé porte le nom de l'entrée avec la nouvelle extension (<code>soustitre.json3.txt</code> devient <code>soustitre.srt</code>). Les fichiers texte sont écrits en UTF-8 avec BOM.</p>
 
-  <h2 id="fr-styles">Styles du .ass</h2>
-  <ul>
-    <li><b>Police.</b> YouTube n'accepte que 7 polices : Roboto (par défaut), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva et Carrois Gothic SC. Toute autre police devient Roboto.</li>
-    <li><b>Taille.</b> Le style « Default » (ou le premier, s'il n'y a pas de « Default ») a toujours la taille standard de YouTube et les autres sont relatifs à lui : Default 15 et un autre style à 30 donnent 100 % et 200 %. Le minimum est 75 %, et l'application Android ignore la taille.</li>
-    <li><b>Gras, italique, souligné</b> et les quatre couleurs : texte, karaoké non chanté, contour et ombre.</li>
-    <li><b>Alignement.</b> En plus de la position, il définit dans quel sens le sous-titre bouge quand la souris survole la vidéo : 7/8/9 descendent, 4/5/6 restent et 1/2/3 montent.</li>
-    <li><b>Contour et ombre.</b> Seul compte le fait que la valeur soit 0 ou supérieure à 0. Le <b>type</b> d'ombre vient du nom du style :
-      <code>YTPlain</code> (aucune), <code>YTGlow</code> (lueur, comme le contour), <code>YTSoftShadow</code> (ombre douce), <code>YTHardShadow</code> (ombre dure) et <code>YTBevel</code> (relief).
-      Les versions <code>…Box</code> ont un fond. Pour combiner plusieurs types dans un style, accolez les noms (<code>YTGlowSoftShadow</code>) ou utilisez un <code>StyleOptions.xml</code> du YTSubConverter d'origine.</li>
-    <li><b>Layer.</b> Quand des lignes sont hors du Layer 0, celle dont le Layer est le plus élevé passe au-dessus dans le .ytt (dans le même Layer, celle qui commence après).</li>
-  </ul>
-
   <h2 id="fr-balises">Balises du .ass</h2>
+  <p><b>En pratique, presque tout l'aspect d'un sous-titre vient des balises en ligne</b> (<code>{\…}</code>). Le style de la ligne n'est que le point de départ : police, couleurs, alignement et type d'ombre.</p>
   <p>Le sous-titre <a href="../exemplos/demonstracao-tags.ass">demonstracao-tags.ass</a> les montre toutes, un écran par groupe (le <a href="../exemplos/demonstracao-tags.ytt">.ytt converti</a> peut s'ouvrir dans l'aperçu).
     Les coordonnées utilisent la résolution du script (<code>PlayResX</code>/<code>PlayResY</code>, par exemple 1280×720), les couleurs sont en <code>&amp;HBBGGRR&amp;</code> et la transparence va de <code>&amp;H00&amp;</code> (opaque) à <code>&amp;HFF&amp;</code> (invisible).</p>
+
+  <h3>Ce que devient chaque balise dans le .ytt</h3>
+  <div class="table"><table>
+    <tr><th>Dans le .ass</th><th>Dans le .ytt</th></tr>
+    <tr><td><code>\b</code> <code>\i</code> <code>\u</code> <code>\fn</code> <code>\fs</code> <code>\c</code> <code>\1a</code></td><td>Attributs du <code>&lt;pen&gt;</code> du segment (<code>b</code>, <code>i</code>, <code>u</code>, <code>fs</code>, <code>sz</code>, <code>fc</code>, <code>fo</code>). Chaque segment d'aspect différent devient un <code>&lt;s&gt;</code> avec son propre pen.</td></tr>
+    <tr><td><code>\3c</code> <code>\4c</code></td><td><code>et</code> (type de bordure, qui vient du nom du style) et <code>ec</code> (couleur). Une ligne avec plusieurs types d'ombre est écrite une fois par type. Si le style n'a ni contour ni ombre, ces couleurs n'apparaissent pas.</td></tr>
+    <tr><td><code>\3a</code> (style <code>…Box</code>)</td><td><code>bc</code> et <code>bo</code> : couleur et opacité du fond.</td></tr>
+    <tr><td><code>\an</code> <code>\pos</code></td><td><code>&lt;wp&gt;</code> (<code>ap</code>, <code>ah</code>, <code>av</code>) et <code>&lt;ws&gt;</code> (alignement). <code>ah</code>/<code>av</code> sont des pourcentages entiers (1 unité ≈ 0,96 % de l'écran), donc la position est arrondie.</td></tr>
+    <tr><td><code>\fad</code> <code>\fade</code> <code>\move</code> <code>\t</code> <code>\kf</code> <code>\ytktFade</code> <code>\ytshake</code> <code>\ytchroma</code></td><td>Le .ytt n'a pas d'animation : la ligne devient une suite de <code>&lt;p&gt;</code>, un état toutes les 2 images (environ 15 par seconde), chacun avec les couleurs, opacités et la position de cet instant. C'est pourquoi les effets longs produisent de gros fichiers.</td></tr>
+    <tr><td><code>\k</code> <code>\ko</code></td><td>Chaque syllabe devient un <code>&lt;s&gt;</code> et chaque changement de syllabe, un nouveau <code>&lt;p&gt;</code>. Avec <code>\2a</code> totalement transparent, le karaoké natif est utilisé : un seul <code>&lt;p&gt;</code> où chaque <code>&lt;s&gt;</code> a le temps <code>t</code> où il apparaît.</td></tr>
+    <tr><td><code>\bord</code> <code>\shad</code> <code>\be</code> <code>\blur</code> <code>\fscx</code> <code>\fscy</code> <code>\fsp</code> <code>\frz</code> <code>\frx</code> <code>\fry</code> <code>\fax</code> <code>\clip</code> <code>\p</code></td><td>Elles n'existent pas dans le .ytt et sont ignorées. L'épaisseur du contour et de l'ombre ne change rien : seul compte le fait que le style ait un contour ou une ombre.</td></tr>
+  </table></div>
 
   <h3>Texte et couleur</h3>
   <div class="table"><table>
@@ -900,6 +946,19 @@ const doc = YttDocument.parse(textoYtt);</code></pre>
 
   <h2 id="fr-srt">Balises du .srt</h2>
   <p>Le .srt accepte <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code> et <code>&lt;font color="#rrggbb"&gt;</code>. Il n'y a pas de position : le sous-titre est toujours en bas, au centre. Voir <a href="../exemplos/demonstracao-tags.srt">demonstracao-tags.srt</a>.</p>
+
+  <h2 id="fr-styles">Styles du .ass</h2>
+  <p>Le style de chaque ligne est le point de départ des balises. La seule chose que seul le style définit est le type d'ombre.</p>
+  <ul>
+    <li><b>Police.</b> YouTube n'accepte que 7 polices : Roboto (par défaut), Courier New, Times New Roman, Lucida Console, Comic Sans MS, Monotype Corsiva et Carrois Gothic SC. Toute autre police devient Roboto.</li>
+    <li><b>Taille.</b> Le style « Default » (ou le premier, s'il n'y a pas de « Default ») a toujours la taille standard de YouTube et les autres sont relatifs à lui : Default 15 et un autre style à 30 donnent 100 % et 200 %. Le minimum est 75 %, et l'application Android ignore la taille.</li>
+    <li><b>Gras, italique, souligné</b> et les quatre couleurs : texte, karaoké non chanté, contour et ombre.</li>
+    <li><b>Alignement.</b> En plus de la position, il définit dans quel sens le sous-titre bouge quand la souris survole la vidéo : 7/8/9 descendent, 4/5/6 restent et 1/2/3 montent.</li>
+    <li><b>Contour et ombre.</b> Seul compte le fait que la valeur soit 0 ou supérieure à 0. Le <b>type</b> d'ombre vient du nom du style :
+      <code>YTPlain</code> (aucune), <code>YTGlow</code> (lueur, comme le contour), <code>YTSoftShadow</code> (ombre douce), <code>YTHardShadow</code> (ombre dure) et <code>YTBevel</code> (relief).
+      Les versions <code>…Box</code> ont un fond. Pour combiner plusieurs types dans un style, accolez les noms (<code>YTGlowSoftShadow</code>).</li>
+    <li><b>Layer.</b> Quand des lignes sont hors du Layer 0, celle dont le Layer est le plus élevé passe au-dessus dans le .ytt (dans le même Layer, celle qui commence après).</li>
+  </ul>
 
   <h2 id="fr-options">Options de la page</h2>
   <div class="table"><table>
@@ -1005,12 +1064,13 @@ const doc = YttDocument.parse(texteYtt);</code></pre>
   <h3>De ce portage</h3>
   <ul>
     <li>Le .ttml n'est pas encore pris en charge. Le .sbv et le .json3 sont en lecture seule.</li>
-    <li>La sortie .ass n'a pas le mode « visuel » de l'original (<code>VisualizingAssDocument</code>).</li>
     <li>L'aperçu est une approximation du lecteur YouTube.</li>
     <li>La récupération des balises est heuristique : temps, rayons et positions sont approximatifs, et des effets mélangés peuvent être lus comme une autre balise. Utilisez la comparaison pour voir où cela diffère.</li>
     <li>Sur la page, la correction de duplication ne vaut que pour la sortie .srt (en ligne de commande, <code>--corrigir-duplicacao</code> l'applique aux autres).</li>
     <li>Les options expérimentales et la simulation du lecteur reposent sur le <code>captions.js</code> de 2026 et peuvent ne plus correspondre si YouTube change son lecteur.</li>
   </ul>
+
+  <p class="tip">Rarement utilisés et non portés : le mode « visuel » de la sortie .ass de l'original (<code>VisualizingAssDocument</code>) et la fenêtre des options de style. Un <code>StyleOptions.xml</code> de l'original est toujours lu, si vous en avez un.</p>
   </article>
 
   <footer data-i18n-html="footer">Port em JavaScript do <a href="https://github.com/arcusmaximus/YTSubConverter">YTSubConverter</a>.</footer>

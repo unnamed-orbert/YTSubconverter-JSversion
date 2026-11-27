@@ -106,6 +106,14 @@ screen, and that padding wraps onto lines of its own, so the subtitle gets talle
 lines moving with `\move`). With this option the padding uses a word joiner (U+2060) and a no-break space, so it
 never wraps; only the spaces of the text itself can.
 
+**Anchor on the edge side** (`--bordas` in the CLI, a checkbox on the page; off by default, experimental): YouTube's
+player (captions.js, 2026) now limits each caption window's `max-width` by the room left to the screen edge, measured
+from the anchor point (`l = ah * 0.96 + 2`): left anchor `98 - l`, right anchor `l - 2`, center `2 * min(l - 2, 98 - l)`.
+A centered subtitle touching the edge (e.g. a vertical column of letters with `\an2` at x = 48 px) gets under 2% of
+width, so it wraps at every break point and grows upward. With this option, when the estimated text width doesn't fit,
+the `wp` anchor moves to the edge side and `ah` is shifted so the text stays where it was; the window justification
+(`ws`) keeps the original anchor, so multi-line text stays centered.
+
 ### Recover the original tags (.ytt/.json3 → .ass)
 
 A regular .ytt → .ass conversion returns each animation frame as a separate line. `src/recover/recoverTags.js`

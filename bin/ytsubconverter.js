@@ -20,6 +20,10 @@ const tagHierarchy = !args.includes(ORIGINAL_FLAG);
 // (teste para legendas perto das bordas, que o YouTube passou a quebrar; ver noWrapPadding em YttDocument).
 const NOWRAP_FLAG = '--sem-quebra';
 const noWrapPadding = args.includes(NOWRAP_FLAG);
+// --bordas: legenda perto da borda esquerda/direita troca a âncora para o lado da borda, para o YouTube não espremer
+// a largura (ver fitEdges / getWindowPosition em YttDocument).
+const EDGES_FLAG = '--bordas';
+const fitEdges = args.includes(EDGES_FLAG);
 // Corrigir duplicação massiva (src/dedup.js): de .ytt/.json3 para .srt é automático, como na ferramenta YTT → SRT.
 // --manter-duplicacao desliga; --corrigir-duplicacao aplica também na saída .ytt/.ass.
 const DEDUP_FLAG = '--corrigir-duplicacao';
@@ -32,9 +36,9 @@ const recover = args.includes(RECOVER_FLAG);
 // --raio-captura=40: raio (px) em que as cópias do \ytchroma são capturadas e ligadas à linha principal
 const radiusArg = args.find((a) => a.startsWith('--raio-captura='));
 const captureRadius = radiusArg ? Number(radiusArg.split('=')[1]) : undefined;
-const [input, outputArg] = args.filter((a) => a !== fadeArg && a !== ORIGINAL_FLAG && a !== NOWRAP_FLAG && a !== DEDUP_FLAG && a !== KEEP_DUP_FLAG && a !== RECOVER_FLAG && a !== radiusArg);
+const [input, outputArg] = args.filter((a) => a !== fadeArg && a !== ORIGINAL_FLAG && a !== NOWRAP_FLAG && a !== EDGES_FLAG && a !== DEDUP_FLAG && a !== KEEP_DUP_FLAG && a !== RECOVER_FLAG && a !== radiusArg);
 if (!input || input === '-h' || input === '--help') {
-  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras[=40]] [--modo-original] [--sem-quebra] [--manter-duplicacao | --corrigir-duplicacao] [--recuperar-tags [--raio-captura=40]]');
+  console.error('Uso: ytsubconverter <entrada.(srt|sbv|ass|ytt|srv3|json3)> [saida.(ytt|srv3|srt|ass)] [--fade-sombras[=40]] [--modo-original] [--sem-quebra] [--bordas] [--manter-duplicacao | --corrigir-duplicacao] [--recuperar-tags [--raio-captura=40]]');
   process.exit(input ? 0 : 1);
 }
 
@@ -86,7 +90,7 @@ try {
   const outputExt = extname(output).toLowerCase();
   const toSrt = outputExt === '.srt';
   if ((forceDedup || (toSrt && !keepDuplication)) && canFixMassiveDuplication(doc)) fixMassiveDuplication(doc, { plainText: toSrt });
-  const result = convertDocument(doc, outputExt, { fadeShadowCutoff, tagHierarchy, noWrapPadding });
+  const result = convertDocument(doc, outputExt, { fadeShadowCutoff, tagHierarchy, noWrapPadding, fitEdges });
   writeFileSync(output, result.save({ bom: true }), 'utf8');
   console.log(`${input} -> ${output}`);
 } catch (err) {

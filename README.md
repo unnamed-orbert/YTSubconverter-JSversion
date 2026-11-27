@@ -99,6 +99,13 @@ turns it off) the tags compose instead of cancelling each other: while fading, t
 below 40% (adjustable), the outline is removed and the text fades alone, like libass. See
 [docs/hierarquia-de-tags.md](docs/hierarquia-de-tags.md).
 
+**Padding without line breaks** (`--sem-quebra` in the CLI, a checkbox on the page; off by default, experimental):
+the converter surrounds every line with invisible padding (zero-width spaces and a space) to work around old
+YouTube bugs. YouTube now shrinks the maximum width of subtitles that get close to the left/right edge of the
+screen, and that padding wraps onto lines of its own, so the subtitle gets taller and jumps (mostly `\an5`, and
+lines moving with `\move`). With this option the padding uses a word joiner (U+2060) and a no-break space, so it
+never wraps; only the spaces of the text itself can.
+
 ### Recover the original tags (.ytt/.json3 → .ass)
 
 A regular .ytt → .ass conversion returns each animation frame as a separate line. `src/recover/recoverTags.js`

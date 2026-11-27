@@ -60,6 +60,26 @@ export class ColorAnimation extends Animation {
     super(startTime, endTime, acceleration);
     this.startColor = startColor;
     this.endColor = endColor;
+    /**
+     * Extensão do port (hierarquia de tags): 'rgb' = o \\t só muda a cor, 'alpha' = só muda a opacidade, 'all' = as duas
+     * (como no C#). No libass a cor e a opacidade são independentes: um \\t(\\3c) da linha inteira e um
+     * \\t(0,20,\\alpha) da letra correm juntos, sem um apagar o outro.
+     */
+    this.channel = 'all';
+  }
+
+  /** A cor no ponto t partindo da cor atual (só a parte do canal da animação muda). */
+  blend(current, t) {
+    const color = this.getColor(t);
+    if (this.channel === 'all' || current == null || current.isEmpty) return color;
+    if (this.channel === 'rgb') return Color.fromArgb(current.a, color.r, color.g, color.b);
+    return Color.fromArgb(color.a, current.r, current.g, current.b);
+  }
+
+  /** Copia o canal para a cópia (clone) desta animação. */
+  withChannelOf(other) {
+    this.channel = other.channel;
+    return this;
   }
 
   get affectsPast() {
@@ -73,11 +93,11 @@ export class ColorAnimation extends Animation {
 
 export class ForeColorAnimation extends ColorAnimation {
   apply(line, section, t) {
-    section.foreColor = this.getColor(t);
+    section.foreColor = this.blend(section.foreColor, t);
   }
 
   clone() {
-    return new ForeColorAnimation(this.startTime, this.startColor, this.endTime, this.endColor, this.acceleration);
+    return new ForeColorAnimation(this.startTime, this.startColor, this.endTime, this.endColor, this.acceleration).withChannelOf(this);
   }
 }
 
@@ -97,8 +117,8 @@ export class KaraokeColorAnimation extends ForeColorAnimation {
   targetAt(time) {
     let color = this.endColor;
     for (const a of this.transforms) {
-      if (time >= a.endTime) color = a.endColor;
-      else if (time > a.startTime) color = a.getColor(a.getProgress ? a.getProgress(time) : (time - a.startTime) / (a.endTime - a.startTime));
+      if (time >= a.endTime) color = a.blend(color, 1);
+      else if (time > a.startTime) color = a.blend(color, a.getProgress ? a.getProgress(time) : (time - a.startTime) / (a.endTime - a.startTime));
     }
     return color;
   }
@@ -115,21 +135,21 @@ export class KaraokeColorAnimation extends ForeColorAnimation {
 
 export class SecondaryColorAnimation extends ColorAnimation {
   apply(line, section, t) {
-    section.secondaryColor = this.getColor(t);
+    section.secondaryColor = this.blend(section.secondaryColor, t);
   }
 
   clone() {
-    return new SecondaryColorAnimation(this.startTime, this.startColor, this.endTime, this.endColor, this.acceleration);
+    return new SecondaryColorAnimation(this.startTime, this.startColor, this.endTime, this.endColor, this.acceleration).withChannelOf(this);
   }
 }
 
 export class BackColorAnimation extends ColorAnimation {
   apply(line, section, t) {
-    section.backColor = this.getColor(t);
+    section.backColor = this.blend(section.backColor, t);
   }
 
   clone() {
-    return new BackColorAnimation(this.startTime, this.startColor, this.endTime, this.endColor, this.acceleration);
+    return new BackColorAnimation(this.startTime, this.startColor, this.endTime, this.endColor, this.acceleration).withChannelOf(this);
   }
 }
 
@@ -140,11 +160,11 @@ export class ShadowColorAnimation extends ColorAnimation {
   }
 
   apply(line, section, t) {
-    section.shadowColors.set(this.shadowType, this.getColor(t));
+    section.shadowColors.set(this.shadowType, this.blend(section.shadowColors.get(this.shadowType), t));
   }
 
   clone() {
-    return new ShadowColorAnimation(this.shadowType, this.startTime, this.startColor, this.endTime, this.endColor, this.acceleration);
+    return new ShadowColorAnimation(this.shadowType, this.startTime, this.startColor, this.endTime, this.endColor, this.acceleration).withChannelOf(this);
   }
 }
 

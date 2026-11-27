@@ -74,6 +74,24 @@ aplicados (`KaraokeColorAnimation`): o destaque modifica a transição em vez de
 O `Layer` do .ass decide quem fica por cima (o maior). No .ytt fica por cima o `<p>` que vem depois; o C# ordenava só
 pelo início. Agora, quando há linhas fora do Layer 0, os `<p>` vão por Layer e, dentro dele, pelo início.
 
+## Cor × opacidade (como no libass)
+
+No libass a cor e a opacidade de cada parte (texto, `\2c`, contorno/caixa, sombra) são independentes:
+
+- Um `\t` que só muda a cor (`\t(\3c&HAF00B2&)`) e um `\t` que só muda a opacidade (`\t(0,40,\alpha&H00&)`) correm
+  juntos. No C# o último apagava o outro: a caixa sumia ou parava de mudar de cor quando cada letra tinha seu
+  `\alpha` + `\t` (efeito letra por letra).
+- Uma tag fixa depois de um `\t` só fixa a parte dela: `\c` fixa a cor e mantém o fade do `\t(\alpha)`, `\alpha`
+  fixa a opacidade e mantém a troca de cor do `\t(\c)`. No C# a tag apagava a animação inteira.
+
+No código: `ColorAnimation.channel` (`'rgb'`, `'alpha'` ou `'all'`, que é o do C#) em `src/animations/animations.js`,
+e `pinAnimations` em `src/formats/ass/tags.js`.
+
+Valem sempre, mesmo sem a hierarquia (o C# erra e o libass é a referência):
+
+- `\move(x1,y1,x2,y2,0,0)` (tempos 0 ou negativos) anda durante a linha inteira.
+- Vale o primeiro `\pos` ou `\move` da linha (no C# o `\move` ganhava sempre).
+
 ## Onde está no código
 
 - `src/formats/ass/karaokeTypes.js`, `applyFadeInDecorationOpacity`: regra 3 no `\ytkt(Fade)`.

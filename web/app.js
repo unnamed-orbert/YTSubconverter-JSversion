@@ -231,7 +231,7 @@ for (const el of [format, fadeShadows, fadeCutoff, tagHierarchy, noWrapPadding, 
 
 function showPreview(ytt, name, download, keepTime) {
   // O preview lê o .ytt gerado (o mesmo arquivo que vai para o YouTube).
-  preview.show(YttDocument.parse(ytt), name, download, { keepTime });
+  preview.show(YttDocument.parse(ytt), name, download, { keepTime, raw: () => YttDocument.parse(ytt, { raw: true }) });
 }
 
 /**

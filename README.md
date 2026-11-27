@@ -114,6 +114,13 @@ width, so it wraps at every break point and grows upward. With this option, when
 the `wp` anchor moves to the edge side and `ah` is shifted so the text stays where it was; the window justification
 (`ws`) keeps the original anchor, so multi-line text stays centered.
 
+**Simulate YouTube's current player** (checkbox under the preview, experimental): the preview reads the `.ytt` as
+written (padding included, `YttDocument.parse(text, { raw: true })`) and lays it out with the current captions.js
+rules: 16 px font per 360 px of height, 1.375 line height, every `<s>` as an `inline-block` with `pre-wrap` (so the
+player may wrap *between* segments, which is why the padding moves to lines of its own even with `--sem-quebra`),
+`.25em` padding on the first/last segment of each line, max-width limited by the distance to the edge, and the
+`\an4/5/6` height measured before that limit. When off, the preview shows the expected result, as before.
+
 ### Recover the original tags (.ytt/.json3 → .ass)
 
 A regular .ytt → .ass conversion returns each animation frame as a separate line. `src/recover/recoverTags.js`

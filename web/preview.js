@@ -139,6 +139,93 @@ export function renderLine(line, time, index) {
   return box;
 }
 
+// ---------------------------------------------------------------- simulação do player atual do YouTube
+
+/** Tamanho da fonte do YouTube: 16 px a cada 360 px de altura do player (captions.js). */
+const YT_FONT_PX_PER_360 = 16;
+
+/**
+ * Desenha a linha como o captions.js atual: cada trecho é um bloco (inline-block, pre-wrap) que pode ir para a
+ * linha de baixo, cada linha do texto é um bloco ("caption-visual-line"), linha 1.375 e folga de .25em no primeiro e
+ * no último trecho de cada linha. A posição é aplicada depois, por layoutYouTubeCue, que precisa do elemento na tela.
+ */
+export function renderLineYouTube(line, time, index) {
+  const box = document.createElement('div');
+  box.className = 'cue yt-cue';
+  box.dataset.line = String(index);
+  const [ax] = ANCHOR[line.anchorPoint] ?? ANCHOR[AnchorPoint.BottomCenter];
+  box.style.textAlign = ax === 0 ? 'left' : ax === 100 ? 'right' : 'center';
+  const rtl = line.horizontalTextDirection === HorizontalTextDirection.RightToLeft;
+  if (rtl) box.style.direction = 'rtl';
+
+  const text = document.createElement('span');
+  text.className = 'captions-text';
+  let visual = null;
+  const newVisualLine = () => {
+    visual = document.createElement('span');
+    visual.className = 'caption-visual-line';
+    text.append(visual);
+  };
+  newVisualLine();
+  for (const section of line.sections) {
+    const visible = time >= line.start + section.startOffset;
+    const pieces = section.text.replace(/\r\n|\r/g, '\n').split('\n');
+    pieces.forEach((piece, i) => {
+      if (i > 0) newVisualLine();
+      if (piece === '') return;
+      const span = makeSpan({ ...section, text: piece, shadowColors: section.shadowColors, foreColor: section.foreColor, backColor: section.backColor }, visible);
+      span.className = 'ytp-caption-segment';
+      visual.append(span);
+    });
+  }
+  box.append(text);
+  return box;
+}
+
+/**
+ * Posiciona uma legenda já inserida na tela com as regras do captions.js atual (método de layout da janela):
+ * 1. janela com max-width 96%; mede a largura e, nas âncoras do meio (\\an4/5/6), a altura;
+ * 2. âncora no centro: width = largura medida + 1 px e margin-left = -width/2; no meio: height = altura medida
+ *    e margin-top = -height/2 (a altura fica travada);
+ * 3. só então aplica a largura máxima pelo espaço até a borda (l = ah * 0.96 + 2):
+ *    esquerda 98 - l, direita l - 2, centro 2 * min(l - 2, 98 - l).
+ * Se o texto quebra no passo 3, ele cresce além da altura travada (o \\an5 "desce").
+ */
+export function layoutYouTubeCue(box, line) {
+  const id = ANCHOR_IDS.indexOf(line.anchorPoint);
+  const col = id >= 0 ? id % 3 : 1;
+  const row = id >= 0 ? Math.floor(id / 3) : 2;
+  const pos = line.position ?? null;
+  const l = pos ? (pos.x / REF_WIDTH) * 100 : 50;
+  const d = pos ? (pos.y / REF_HEIGHT) * 100 : 98;
+  const st = box.style;
+  Object.assign(st, { top: '0', left: '0', right: '', bottom: '', width: '', height: '', maxWidth: '96%', maxHeight: '96%', margin: '', transform: '' });
+  const measuredWidth = box.offsetWidth;
+  const measuredHeight = box.clientHeight;
+  Object.assign(st, { top: '', left: '', maxHeight: '' });
+  if (col === 0) st.left = `${l}%`;
+  else if (col === 1) {
+    st.left = `${l}%`;
+    const w = measuredWidth + 1;
+    st.width = `${w}px`;
+    st.marginLeft = `${-w / 2}px`;
+  } else st.right = `${100 - l}%`;
+  if (row === 0) st.top = `${d}%`;
+  else if (row === 1) {
+    st.top = `${d}%`;
+    st.height = `${measuredHeight}px`;
+    st.marginTop = `${-measuredHeight / 2}px`;
+  } else st.bottom = `${100 - d}%`;
+  const max = col === 0 ? 98 - l : col === 2 ? l - 2 : 2 * Math.min(l - 2, 98 - l);
+  st.maxWidth = `${Math.max(0, max)}%`;
+}
+
+const ANCHOR_IDS = [
+  AnchorPoint.TopLeft, AnchorPoint.TopCenter, AnchorPoint.TopRight,
+  AnchorPoint.MiddleLeft, AnchorPoint.Center, AnchorPoint.MiddleRight,
+  AnchorPoint.BottomLeft, AnchorPoint.BottomCenter, AnchorPoint.BottomRight,
+];
+
 export function formatTime(ms) {
   ms = Math.max(0, Math.round(ms));
   const m = Math.floor(ms / 60000);
@@ -172,8 +259,24 @@ export class YttPreview {
     const debugRoot = root.querySelector('.debug');
     this.debug = debugRoot ? new DebugPanel(debugRoot, root.querySelector('.debug-check'), this) : null;
 
+    /** Simular o layout do player atual do YouTube (renderLineYouTube / layoutYouTubeCue). */
+    this.youtubeLayout = false;
+    const ytCheck = root.querySelector('.yt-layout-check');
+    if (ytCheck) {
+      try { ytCheck.checked = localStorage.getItem('ytLayout') === '1'; } catch { /* sem storage */ }
+      this.youtubeLayout = ytCheck.checked;
+      ytCheck.addEventListener('change', () => {
+        this.youtubeLayout = ytCheck.checked;
+        try { localStorage.setItem('ytLayout', ytCheck.checked ? '1' : '0'); } catch { /* sem storage */ }
+        this.updateFontSize();
+        this.lastKey = null;
+        this.render();
+      });
+    }
+
     new ResizeObserver(() => {
-      this.stage.style.fontSize = `${(this.stage.clientHeight / REF_HEIGHT) * BASE_FONT_PX}px`;
+      this.updateFontSize();
+      if (this.youtubeLayout) { this.lastKey = null; this.render(); }
     }).observe(this.stage);
 
     this.playBtn.addEventListener('click', () => this.toggle());
@@ -200,6 +303,14 @@ export class YttPreview {
     for (const t of ['pointermove', 'pointerdown', 'keydown']) {
       this.player.addEventListener(t, () => this.showControls());
     }
+  }
+
+  updateFontSize() {
+    const h = this.stage.clientHeight;
+    this.stage.style.fontSize = this.youtubeLayout
+      ? `${(h / 360) * YT_FONT_PX_PER_360}px`
+      : `${(h / REF_HEIGHT) * BASE_FONT_PX}px`;
+    this.stage.classList.toggle('yt-layout', this.youtubeLayout);
   }
 
   get isFullscreen() {
@@ -257,8 +368,12 @@ export class YttPreview {
    * @param {{keepTime?: boolean}} [opts] keepTime: o mesmo arquivo reconvertido (opção mudada): fica no mesmo ponto,
    *   tocando ou não, e sem rolar a página
    */
-  show(doc, name, download = null, { keepTime = false } = {}) {
+  show(doc, name, download = null, { keepTime = false, raw = null } = {}) {
     this.lines = doc.lines.filter((l) => l.end > l.start && l.text.trim() !== '');
+    // Simulação do YouTube: as mesmas legendas, mas com os trechos como estão no .ytt (preenchimento incluído).
+    // Lido só quando a simulação é ligada (raw é uma função).
+    this.rawSource = raw;
+    this.rawLines = null;
     this.title.textContent = name;
     this.downloadLink.hidden = !download;
     if (download) {
@@ -357,9 +472,26 @@ export class YttPreview {
     if (key === this.lastKey) return;
     this.lastKey = key;
     this.active = active;
-    this.layer.replaceChildren(...active.map((i) => renderLine(this.lines[i], t, i)));
+    const raw = this.youtubeLayout ? this.getRawLines() : null;
+    if (raw) {
+      // Os índices continuam os de this.lines (tabela de debug); as linhas desenhadas são as do .ytt cru.
+      const shownRaw = raw.filter((l) => t >= l.start && t < l.end);
+      const boxes = shownRaw.map((l) => renderLineYouTube(l, t, -1));
+      this.layer.replaceChildren(...boxes);
+      boxes.forEach((box, k) => layoutYouTubeCue(box, shownRaw[k]));
+    } else {
+      this.layer.replaceChildren(...active.map((i) => renderLine(this.lines[i], t, i)));
+    }
     this.applyHighlight();
     this.debug?.schedule();
+  }
+
+  /** Linhas do .ytt com os truques do escritor (para simular o YouTube), lidas uma vez. */
+  getRawLines() {
+    if (!this.rawLines && this.rawSource) {
+      this.rawLines = this.rawSource().lines.filter((l) => l.end > l.start);
+    }
+    return this.rawLines;
   }
 
   /** Índices (em this.lines) das linhas na tela agora. */

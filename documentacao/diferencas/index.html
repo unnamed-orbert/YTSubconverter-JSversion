@@ -68,6 +68,7 @@
     <li><b>Tabela de debug:</b> no preview, mostra o que cada linha desenha e as tags .ass prováveis.</li>
     <li><b>Atualizar arquivos:</b> ao mudar uma opção, os arquivos carregados são convertidos de novo sozinhos.</li>
     <li><b>True fade:</b> opção que tira a sombra/contorno quando a opacidade do texto fica abaixo de uma porcentagem.</li>
+    <li><b>Regras novas do player do YouTube</b> (experimentais, porque o YouTube mudou o player depois do original): "Simular o player atual do YouTube" no preview, "Preenchimento sem quebra de linha" (<code>--sem-quebra</code>) e "Âncora no lado da borda" (<code>--bordas</code>), para legendas perto das bordas que o player passou a espremer. Veja <a href="../../documentacao/#pt-player">como o player do YouTube desenha</a>.</li>
   </ul>
 
   <h2 id="pt-hierarquia">Hierarquia de tags</h2>
@@ -78,6 +79,7 @@
     <li><b>Contorno no fade.</b> Enquanto o texto está acima do corte (<b>40%</b> por padrão), a cor do contorno vai da cor dele até a cor do texto, e chega nela exatamente no corte. Abaixo do corte o contorno sai e o texto some sozinho, como no libass. No <code>\ytkt(Fade)</code> é o inverso: a sílaba entra só com o texto e ganha o contorno a partir de 40%.</li>
     <li><b>Sombras deslocadas no fade.</b> A sombra suave, a dura e o relevo não vão para a cor do texto, porque virariam um borrão claro. As escuras viram a sombra automática do YouTube (#222222 com a opacidade do texto) e somem junto. As coloridas ficam até o corte.</li>
     <li><b>Várias sombras dividem a opacidade.</b> O .ytt desenha o texto uma vez por tipo de sombra. Cada cópia fica com <code>1 - (1 - a)^(1/N)</code>, para que juntas deem a opacidade <code>a</code> pedida em vez de somar.</li>
+    <li><b>Cor e transparência separadas, como no libass.</b> Um <code>\t</code> só de cor e um <code>\t</code> só de transparência correm juntos (no original o último apagava o outro, e a caixa de um efeito letra por letra sumia ou parava de mudar de cor). Uma tag fixa depois de um <code>\t</code> só fixa a parte dela: <code>\c</code> mantém o fade de um <code>\t(\alpha)</code>, e <code>\alpha</code> mantém a troca de cor de um <code>\t(\c)</code>.</li>
     <li><b>Sombra transparente sem transição</b> (por exemplo, um estilo com sombra <code>&amp;H80000000</code> e texto opaco) continua opaca, como no original.</li>
   </ul>
   <p>Os detalhes estão em <a href="https://github.com/unnamed-orbert/YTSubconverter-JSversion/blob/main/docs/hierarquia-de-tags.md">docs/hierarquia-de-tags.md</a>.</p>
@@ -90,6 +92,12 @@
     <tr><td><code>\ytchroma</code> + karaokê ou <code>\t</code> de cor</td><td>As cópias eram pintadas de volta nas cores da linha, e o efeito sumia (com <code>\ytkt(Fade)</code> + <code>\fad</code>, as cópias pareciam a própria linha).</td><td>As cópias ficam na cor do chroma e só herdam a opacidade e o fade.</td></tr>
     <tr><td><code>\fade(entrada,saída)</code></td><td>Só aceitava a forma de 7 valores. A de 2 era ignorada e a linha ficava sem fade.</td><td>Funciona como <code>\fad</code>, igual ao libass e ao VSFilter.</td></tr>
     <tr><td>Salvar .ass com uma combinação de sombras sem estilo</td><td>Erro (<code>NullReferenceException</code>).</td><td>Cria um estilo <code>YT&lt;sombras&gt;[Box]</code> (ex.: <code>YTGlowSoftShadowHardShadowBevel</code>), e o leitor deduz as sombras pelo nome.</td></tr>
+    <tr><td><code>\ytktFade</code> ou <code>\kf</code> + <code>\t</code> de cor</td><td>A troca do karaokê ia até a cor fixa do <code>\1c</code> e apagava o <code>\t</code> do mesmo trecho.</td><td>A troca vai até a cor que a sílaba tem naquele momento, com o <code>\t</code> aplicado. Na recuperação de tags, karaokê seguido de uma troca na linha inteira vira <code>\k</code> + <code>\t</code>.</td></tr>
+    <tr><td><code>\kf</code>, <code>\K</code>, <code>\ko</code></td><td>Ignorados: a sílaba ficava sem duração e o karaokê saía errado.</td><td><code>\kf</code>/<code>\K</code> enchem a sílaba aos poucos, <code>\ko</code> tira o contorno da sílaba não cantada, e todos podem se misturar com <code>\k</code>.</td></tr>
+    <tr><td><code>Layer</code></td><td>Ignorado: o .ytt era ordenado só pelo início, e uma linha de Layer baixo que começasse depois cobria a de Layer alto.</td><td>Com linhas fora do Layer 0, a de Layer maior fica por cima.</td></tr>
+    <tr><td><code>\move</code> seguido de <code>\fad</code></td><td>Se o movimento terminava exatamente quando o fade de saída começava, a legenda parava antes do destino.</td><td>O fade começa com a legenda no destino.</td></tr>
+    <tr><td><code>\move(x1,y1,x2,y2,0,0)</code></td><td>A legenda ficava parada.</td><td>Anda durante a linha inteira, como no libass.</td></tr>
+    <tr><td><code>\pos</code> e <code>\move</code> na mesma linha</td><td>O <code>\move</code> ganhava sempre.</td><td>Vale o primeiro, como no libass.</td></tr>
   </table></div>
 
   <h2 id="pt-fora">O que ficou de fora</h2>
@@ -102,8 +110,8 @@
   <h2 id="pt-identico">Saída idêntica ao original</h2>
   <p>Para gerar exatamente o mesmo .ytt que o YTSubConverter:</p>
   <ul>
-    <li>na página, desmarque "Hierarquia de tags" e "No fade, tirar sombra/contorno";</li>
-    <li>na linha de comando, use <code>--modo-original</code> e não use <code>--fade-sombras</code>.</li>
+    <li>na página, desmarque "Hierarquia de tags" e "No fade, tirar sombra/contorno", e deixe desmarcadas as opções "Preenchimento sem quebra de linha" e "Âncora no lado da borda" (elas já vêm assim);</li>
+    <li>na linha de comando, use <code>--modo-original</code> e não use <code>--fade-sombras</code>, <code>--sem-quebra</code> nem <code>--bordas</code>.</li>
   </ul>
   <p>As <a href="#pt-correcoes">correções que sempre valem</a> só mudam os arquivos que caem nesses casos, em que o original dava erro ou perdia o efeito. Na saída .srt de um .ytt/.json3, a correção de duplicação vem ligada (desligue na caixa ou com <code>--manter-duplicacao</code>).</p>
   </article>
@@ -151,6 +159,7 @@
     <li><b>Debug table:</b> in the preview, shows what each line draws and the likely .ass tags.</li>
     <li><b>Update files:</b> when an option changes, the loaded files are converted again on their own.</li>
     <li><b>True fade:</b> an option that removes the shadow/outline once the text opacity drops below a percentage.</li>
+    <li><b>YouTube's new player rules</b> (experimental, because YouTube changed its player after the original): "Simulate YouTube's current player" in the preview, "Padding without line breaks" (<code>--sem-quebra</code>) and "Anchor on the edge side" (<code>--bordas</code>), for subtitles near the edges that the player now squeezes. See <a href="../../documentacao/#en-player">how the YouTube player draws</a>.</li>
   </ul>
 
   <h2 id="en-hierarchy">Tag hierarchy</h2>
@@ -161,6 +170,7 @@
     <li><b>Outline during fades.</b> While the text is above the cutoff (<b>40%</b> by default), the outline color moves from its own color to the text color, reaching it exactly at the cutoff. Below the cutoff the outline is removed and the text fades alone, like in libass. With <code>\ytkt(Fade)</code> it's the reverse: the syllable comes in with just the text and gets its outline from 40% on.</li>
     <li><b>Offset shadows during fades.</b> Soft shadow, hard shadow and bevel don't move to the text color, because they'd become a bright blur. Dark ones become YouTube's automatic shadow (#222222 with the text's opacity) and fade along. Colored ones stay until the cutoff.</li>
     <li><b>Several shadows split the opacity.</b> The .ytt draws the text once per shadow type. Each copy gets <code>1 - (1 - a)^(1/N)</code>, so together they give the requested opacity <code>a</code> instead of adding up.</li>
+    <li><b>Color and transparency kept apart, as in libass.</b> A color-only <code>\t</code> and a transparency-only <code>\t</code> run together (in the original the last one erased the other, and the box of a letter-by-letter effect vanished or stopped changing color). A fixed tag after a <code>\t</code> only pins its own part: <code>\c</code> keeps the fade of a <code>\t(\alpha)</code>, and <code>\alpha</code> keeps the color change of a <code>\t(\c)</code>.</li>
     <li><b>A transparent shadow with no transition</b> (for example, a style with shadow <code>&amp;H80000000</code> and opaque text) stays opaque, as in the original.</li>
   </ul>
   <p>The details are in <a href="https://github.com/unnamed-orbert/YTSubconverter-JSversion/blob/main/docs/hierarquia-de-tags.md">docs/hierarquia-de-tags.md</a> (in Portuguese).</p>
@@ -173,6 +183,12 @@
     <tr><td><code>\ytchroma</code> + karaoke or color <code>\t</code></td><td>The copies were painted back in the line's colors and the effect disappeared (with <code>\ytkt(Fade)</code> + <code>\fad</code>, the copies looked like the line itself).</td><td>The copies keep the chroma color and only inherit the opacity and the fade.</td></tr>
     <tr><td><code>\fade(in,out)</code></td><td>Only the 7-value form was accepted. The 2-value form was ignored and the line had no fade.</td><td>Works like <code>\fad</code>, as in libass and VSFilter.</td></tr>
     <tr><td>Saving .ass with a shadow combination that has no style</td><td>Error (<code>NullReferenceException</code>).</td><td>Creates a <code>YT&lt;shadows&gt;[Box]</code> style (e.g. <code>YTGlowSoftShadowHardShadowBevel</code>), and the reader works out the shadows from the name.</td></tr>
+    <tr><td><code>\ytktFade</code> or <code>\kf</code> + color <code>\t</code></td><td>The karaoke change went to the fixed <code>\1c</code> color and erased the <code>\t</code> of the same segment.</td><td>The change goes to the color the syllable has at that moment, with the <code>\t</code> applied. When recovering tags, karaoke followed by a change on the whole line becomes <code>\k</code> + <code>\t</code>.</td></tr>
+    <tr><td><code>\kf</code>, <code>\K</code>, <code>\ko</code></td><td>Ignored: the syllable had no duration and the karaoke came out wrong.</td><td><code>\kf</code>/<code>\K</code> fill the syllable gradually, <code>\ko</code> removes the outline of unsung syllables, and all of them can be mixed with <code>\k</code>.</td></tr>
+    <tr><td><code>Layer</code></td><td>Ignored: the .ytt was sorted by start time only, and a low-Layer line starting later covered a high-Layer one.</td><td>When some lines are outside Layer 0, the higher Layer is on top.</td></tr>
+    <tr><td><code>\move</code> followed by <code>\fad</code></td><td>If the movement ended exactly when the fade-out started, the subtitle stopped short of its destination.</td><td>The fade starts with the subtitle at its destination.</td></tr>
+    <tr><td><code>\move(x1,y1,x2,y2,0,0)</code></td><td>The subtitle stood still.</td><td>It moves over the whole line, as in libass.</td></tr>
+    <tr><td><code>\pos</code> and <code>\move</code> in the same line</td><td>The <code>\move</code> always won.</td><td>The first one wins, as in libass.</td></tr>
   </table></div>
 
   <h2 id="en-out">What was left out</h2>
@@ -185,8 +201,8 @@
   <h2 id="en-identical">Output identical to the original</h2>
   <p>To produce exactly the same .ytt as YTSubConverter:</p>
   <ul>
-    <li>on the page, uncheck "Tag hierarchy" and "During fades, remove shadow/outline";</li>
-    <li>on the command line, use <code>--modo-original</code> and don't use <code>--fade-sombras</code>.</li>
+    <li>on the page, uncheck "Tag hierarchy" and "During fades, remove shadow/outline", and leave "Padding without line breaks" and "Anchor on the edge side" unchecked (they start that way);</li>
+    <li>on the command line, use <code>--modo-original</code> and don't use <code>--fade-sombras</code>, <code>--sem-quebra</code> or <code>--bordas</code>.</li>
   </ul>
   <p>The <a href="#en-fixes">fixes that always apply</a> only change files that hit those cases, where the original errored or lost the effect. For .srt output from a .ytt/.json3, the duplication fix is on (turn it off with the checkbox or <code>--manter-duplicacao</code>).</p>
   </article>
@@ -234,6 +250,7 @@
     <li><b>Tabla de depuración:</b> en la vista previa, muestra lo que dibuja cada línea y las etiquetas .ass probables.</li>
     <li><b>Actualizar archivos:</b> al cambiar una opción, los archivos cargados se vuelven a convertir solos.</li>
     <li><b>True fade:</b> opción que quita la sombra/contorno cuando la opacidad del texto baja de un porcentaje.</li>
+    <li><b>Reglas nuevas del reproductor de YouTube</b> (experimentales, porque YouTube cambió el reproductor después del original): "Simular el reproductor actual de YouTube" en la vista previa, "Relleno sin salto de línea" (<code>--sem-quebra</code>) y "Ancla del lado del borde" (<code>--bordas</code>), para subtítulos cerca de los bordes que el reproductor ahora estrecha. Mira <a href="../../documentacao/#es-player">cómo dibuja el reproductor de YouTube</a>.</li>
   </ul>
 
   <h2 id="es-jerarquia">Jerarquía de etiquetas</h2>
@@ -244,6 +261,7 @@
     <li><b>Contorno en el fundido.</b> Mientras el texto está por encima del corte (<b>40%</b> por defecto), el color del contorno va de su color al color del texto, y lo alcanza justo en el corte. Por debajo del corte el contorno se quita y el texto desaparece solo, como en libass. Con <code>\ytkt(Fade)</code> es al revés: la sílaba entra solo con el texto y gana el contorno a partir del 40%.</li>
     <li><b>Sombras desplazadas en el fundido.</b> La sombra suave, la dura y el relieve no van al color del texto, porque se volverían una mancha clara. Las oscuras pasan a la sombra automática de YouTube (#222222 con la opacidad del texto) y desaparecen junto. Las de color quedan hasta el corte.</li>
     <li><b>Varias sombras reparten la opacidad.</b> El .ytt dibuja el texto una vez por tipo de sombra. Cada copia queda con <code>1 - (1 - a)^(1/N)</code>, para que juntas den la opacidad <code>a</code> pedida en vez de sumarse.</li>
+    <li><b>Color y transparencia separados, como en libass.</b> Un <code>\t</code> solo de color y un <code>\t</code> solo de transparencia corren juntos (en el original el último borraba el otro, y la caja de un efecto letra por letra desaparecía o dejaba de cambiar de color). Una etiqueta fija después de un <code>\t</code> solo fija su parte: <code>\c</code> mantiene el fundido de un <code>\t(\alpha)</code>, y <code>\alpha</code> mantiene el cambio de color de un <code>\t(\c)</code>.</li>
     <li><b>Una sombra transparente sin transición</b> (por ejemplo, un estilo con sombra <code>&amp;H80000000</code> y texto opaco) sigue opaca, como en el original.</li>
   </ul>
   <p>Los detalles están en <a href="https://github.com/unnamed-orbert/YTSubconverter-JSversion/blob/main/docs/hierarquia-de-tags.md">docs/hierarquia-de-tags.md</a> (en portugués).</p>
@@ -256,6 +274,12 @@
     <tr><td><code>\ytchroma</code> + karaoke o <code>\t</code> de color</td><td>Las copias se pintaban de nuevo con los colores de la línea y el efecto desaparecía (con <code>\ytkt(Fade)</code> + <code>\fad</code>, las copias parecían la propia línea).</td><td>Las copias quedan en el color del chroma y solo heredan la opacidad y el fundido.</td></tr>
     <tr><td><code>\fade(entrada,salida)</code></td><td>Solo aceptaba la forma de 7 valores. La de 2 se ignoraba y la línea quedaba sin fundido.</td><td>Funciona como <code>\fad</code>, igual que libass y VSFilter.</td></tr>
     <tr><td>Guardar .ass con una combinación de sombras sin estilo</td><td>Error (<code>NullReferenceException</code>).</td><td>Crea un estilo <code>YT&lt;sombras&gt;[Box]</code> (ej.: <code>YTGlowSoftShadowHardShadowBevel</code>), y el lector deduce las sombras por el nombre.</td></tr>
+    <tr><td><code>\ytktFade</code> o <code>\kf</code> + <code>\t</code> de color</td><td>El cambio del karaoke iba hasta el color fijo del <code>\1c</code> y borraba el <code>\t</code> del mismo fragmento.</td><td>El cambio va hasta el color que la sílaba tiene en ese momento, con el <code>\t</code> aplicado. Al recuperar etiquetas, un karaoke seguido de un cambio en toda la línea se vuelve <code>\k</code> + <code>\t</code>.</td></tr>
+    <tr><td><code>\kf</code>, <code>\K</code>, <code>\ko</code></td><td>Ignorados: la sílaba quedaba sin duración y el karaoke salía mal.</td><td><code>\kf</code>/<code>\K</code> llenan la sílaba poco a poco, <code>\ko</code> quita el contorno de la sílaba no cantada, y todos se pueden mezclar con <code>\k</code>.</td></tr>
+    <tr><td><code>Layer</code></td><td>Ignorado: el .ytt se ordenaba solo por el inicio, y una línea de Layer bajo que empezara después tapaba la de Layer alto.</td><td>Con líneas fuera del Layer 0, la de Layer mayor queda encima.</td></tr>
+    <tr><td><code>\move</code> seguido de <code>\fad</code></td><td>Si el movimiento terminaba justo cuando empezaba el fundido de salida, el subtítulo se quedaba antes del destino.</td><td>El fundido empieza con el subtítulo en el destino.</td></tr>
+    <tr><td><code>\move(x1,y1,x2,y2,0,0)</code></td><td>El subtítulo se quedaba quieto.</td><td>Se mueve durante toda la línea, como en libass.</td></tr>
+    <tr><td><code>\pos</code> y <code>\move</code> en la misma línea</td><td>Siempre ganaba el <code>\move</code>.</td><td>Vale el primero, como en libass.</td></tr>
   </table></div>
 
   <h2 id="es-fuera">Lo que quedó fuera</h2>
@@ -268,8 +292,8 @@
   <h2 id="es-identica">Salida idéntica al original</h2>
   <p>Para generar exactamente el mismo .ytt que YTSubConverter:</p>
   <ul>
-    <li>en la página, desmarca "Jerarquía de etiquetas" y "En los fundidos, quitar sombra/contorno";</li>
-    <li>en la línea de comandos, usa <code>--modo-original</code> y no uses <code>--fade-sombras</code>.</li>
+    <li>en la página, desmarca "Jerarquía de etiquetas" y "En los fundidos, quitar sombra/contorno", y deja sin marcar "Relleno sin salto de línea" y "Ancla del lado del borde" (ya vienen así);</li>
+    <li>en la línea de comandos, usa <code>--modo-original</code> y no uses <code>--fade-sombras</code>, <code>--sem-quebra</code> ni <code>--bordas</code>.</li>
   </ul>
   <p>Las <a href="#es-correcciones">correcciones que siempre valen</a> solo cambian los archivos que caen en esos casos, en los que el original daba error o perdía el efecto. En la salida .srt de un .ytt/.json3, la corrección de duplicación viene activada (desactívala en la casilla o con <code>--manter-duplicacao</code>).</p>
   </article>
@@ -317,6 +341,7 @@
     <li><b>Tableau de débogage :</b> dans l'aperçu, montre ce que dessine chaque ligne et les balises .ass probables.</li>
     <li><b>Mettre à jour les fichiers :</b> quand une option change, les fichiers chargés sont reconvertis tout seuls.</li>
     <li><b>True fade :</b> option qui retire l'ombre/le contour quand l'opacité du texte passe sous un pourcentage.</li>
+    <li><b>Nouvelles règles du lecteur YouTube</b> (expérimental, car YouTube a changé son lecteur après l'original) : « Simuler le lecteur YouTube actuel » dans l'aperçu, « Remplissage sans retour à la ligne » (<code>--sem-quebra</code>) et « Ancre du côté du bord » (<code>--bordas</code>), pour les sous-titres près des bords que le lecteur comprime désormais. Voir <a href="../../documentacao/#fr-player">comment le lecteur YouTube dessine</a>.</li>
   </ul>
 
   <h2 id="fr-hierarchie">Hiérarchie des balises</h2>
@@ -327,6 +352,7 @@
     <li><b>Contour pendant les fondus.</b> Tant que le texte est au-dessus du seuil (<b>40 %</b> par défaut), la couleur du contour va de sa couleur à celle du texte, et l'atteint exactement au seuil. Sous le seuil, le contour est retiré et le texte disparaît seul, comme dans libass. Avec <code>\ytkt(Fade)</code> c'est l'inverse : la syllabe entre avec le texte seul et prend son contour à partir de 40 %.</li>
     <li><b>Ombres décalées pendant les fondus.</b> L'ombre douce, l'ombre dure et le relief ne prennent pas la couleur du texte, car elles deviendraient un flou clair. Les sombres deviennent l'ombre automatique de YouTube (#222222 avec l'opacité du texte) et disparaissent avec lui. Les colorées restent jusqu'au seuil.</li>
     <li><b>Plusieurs ombres se partagent l'opacité.</b> Le .ytt dessine le texte une fois par type d'ombre. Chaque copie reçoit <code>1 - (1 - a)^(1/N)</code>, pour qu'ensemble elles donnent l'opacité <code>a</code> demandée au lieu de s'additionner.</li>
+    <li><b>Couleur et transparence séparées, comme dans libass.</b> Un <code>\t</code> de couleur seule et un <code>\t</code> de transparence seule avancent ensemble (dans l'original le dernier effaçait l'autre, et la boîte d'un effet lettre par lettre disparaissait ou ne changeait plus de couleur). Une balise fixe après un <code>\t</code> ne fixe que sa partie : <code>\c</code> garde le fondu d'un <code>\t(\alpha)</code>, et <code>\alpha</code> garde le changement de couleur d'un <code>\t(\c)</code>.</li>
     <li><b>Une ombre transparente sans transition</b> (par exemple un style avec l'ombre <code>&amp;H80000000</code> et un texte opaque) reste opaque, comme dans l'original.</li>
   </ul>
   <p>Les détails sont dans <a href="https://github.com/unnamed-orbert/YTSubconverter-JSversion/blob/main/docs/hierarquia-de-tags.md">docs/hierarquia-de-tags.md</a> (en portugais).</p>
@@ -339,6 +365,12 @@
     <tr><td><code>\ytchroma</code> + karaoké ou <code>\t</code> de couleur</td><td>Les copies étaient repeintes dans les couleurs de la ligne et l'effet disparaissait (avec <code>\ytkt(Fade)</code> + <code>\fad</code>, les copies ressemblaient à la ligne elle-même).</td><td>Les copies gardent la couleur du chroma et n'héritent que de l'opacité et du fondu.</td></tr>
     <tr><td><code>\fade(entrée,sortie)</code></td><td>Seule la forme à 7 valeurs était acceptée. Celle à 2 valeurs était ignorée et la ligne n'avait pas de fondu.</td><td>Fonctionne comme <code>\fad</code>, comme dans libass et VSFilter.</td></tr>
     <tr><td>Enregistrer un .ass avec une combinaison d'ombres sans style</td><td>Erreur (<code>NullReferenceException</code>).</td><td>Crée un style <code>YT&lt;ombres&gt;[Box]</code> (ex. : <code>YTGlowSoftShadowHardShadowBevel</code>), et le lecteur déduit les ombres à partir du nom.</td></tr>
+    <tr><td><code>\ytktFade</code> ou <code>\kf</code> + <code>\t</code> de couleur</td><td>Le changement du karaoké allait jusqu'à la couleur fixe du <code>\1c</code> et effaçait le <code>\t</code> du même segment.</td><td>Le changement va jusqu'à la couleur qu'a la syllabe à ce moment, avec le <code>\t</code> appliqué. À la récupération des balises, un karaoké suivi d'un changement sur toute la ligne donne <code>\k</code> + <code>\t</code>.</td></tr>
+    <tr><td><code>\kf</code>, <code>\K</code>, <code>\ko</code></td><td>Ignorés : la syllabe n'avait pas de durée et le karaoké était faux.</td><td><code>\kf</code>/<code>\K</code> remplissent la syllabe peu à peu, <code>\ko</code> retire le contour des syllabes pas encore chantées, et tous se mélangent avec <code>\k</code>.</td></tr>
+    <tr><td><code>Layer</code></td><td>Ignoré : le .ytt était trié par début seulement, et une ligne de Layer bas qui commençait après recouvrait celle de Layer haut.</td><td>Avec des lignes hors du Layer 0, le Layer le plus élevé passe au-dessus.</td></tr>
+    <tr><td><code>\move</code> suivi de <code>\fad</code></td><td>Si le mouvement finissait pile au début du fondu de sortie, le sous-titre s'arrêtait avant sa destination.</td><td>Le fondu commence avec le sous-titre à destination.</td></tr>
+    <tr><td><code>\move(x1,y1,x2,y2,0,0)</code></td><td>Le sous-titre restait immobile.</td><td>Il se déplace pendant toute la ligne, comme dans libass.</td></tr>
+    <tr><td><code>\pos</code> et <code>\move</code> dans la même ligne</td><td>Le <code>\move</code> gagnait toujours.</td><td>C'est le premier qui compte, comme dans libass.</td></tr>
   </table></div>
 
   <h2 id="fr-absent">Ce qui a été laissé de côté</h2>
@@ -351,8 +383,8 @@
   <h2 id="fr-identique">Sortie identique à l'original</h2>
   <p>Pour produire exactement le même .ytt que YTSubConverter :</p>
   <ul>
-    <li>sur la page, décochez « Hiérarchie des balises » et « Pendant les fondus, retirer l'ombre/le contour » ;</li>
-    <li>en ligne de commande, utilisez <code>--modo-original</code> et pas <code>--fade-sombras</code>.</li>
+    <li>sur la page, décochez « Hiérarchie des balises » et « Pendant les fondus, retirer l'ombre/le contour », et laissez décochées « Remplissage sans retour à la ligne » et « Ancre du côté du bord » (elles le sont par défaut) ;</li>
+    <li>en ligne de commande, utilisez <code>--modo-original</code> et ni <code>--fade-sombras</code>, ni <code>--sem-quebra</code>, ni <code>--bordas</code>.</li>
   </ul>
   <p>Les <a href="#fr-corrections">corrections toujours actives</a> ne changent que les fichiers concernés par ces cas, où l'original plantait ou perdait l'effet. Pour une sortie .srt depuis un .ytt/.json3, la correction de duplication est activée (désactivez-la avec la case ou <code>--manter-duplicacao</code>).</p>
   </article>

@@ -27,6 +27,7 @@ const format = document.getElementById('format');
 const fadeShadows = document.getElementById('fadeShadows');
 const fadeCutoff = document.getElementById('fadeCutoff');
 const tagHierarchy = document.getElementById('tagHierarchy');
+const noWrapPadding = document.getElementById('noWrapPadding');
 const captureRadius = document.getElementById('captureRadius');
 const fixDuplication = document.getElementById('fixDuplication');
 const results = document.getElementById('results');
@@ -52,6 +53,7 @@ async function convertFile(file, targetExt) {
     // Com a hierarquia, a porcentagem é sempre o ponto em que o contorno sai e o texto some sozinho.
     fadeShadowCutoff: (fadeShadows.checked || tagHierarchy.checked) && cutoff > 0 ? Math.min(cutoff, 100) : null,
     tagHierarchy: tagHierarchy.checked,
+    noWrapPadding: noWrapPadding.checked,
   };
   // Corrigir duplicação massiva: só no caminho .ytt/.json3 -> .srt (para .ytt/.ass a legenda fica como está).
   const dedup = targetExt === '.srt' && fixDuplication.checked;
@@ -220,7 +222,7 @@ function scheduleRefresh() {
   clearTimeout(refreshTimer);
   if (entries.length) refreshTimer = setTimeout(refreshAll, 400);
 }
-for (const el of [format, fadeShadows, fadeCutoff, tagHierarchy, captureRadius, fixDuplication]) {
+for (const el of [format, fadeShadows, fadeCutoff, tagHierarchy, noWrapPadding, captureRadius, fixDuplication]) {
   el.addEventListener('change', scheduleRefresh);
   if (el.type === 'number') el.addEventListener('input', scheduleRefresh);
 }

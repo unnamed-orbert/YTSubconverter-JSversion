@@ -12,6 +12,12 @@ import { SubtitleDocument } from './subtitleDocument.js';
 const ZERO_WIDTH_SPACE = '​';
 // Surrounded with zwsp's so it can be recognized and removed during reverse conversion
 const PADDING_SPACE = '​ ​';
+// Opção noWrapPadding: as mesmas peças, mas sem pontos de quebra de linha (WORD JOINER no lugar do zwsp e espaço
+// rígido no lugar do espaço). O YouTube passou a encolher a largura máxima das legendas perto das bordas da
+// tela; aí o preenchimento invisível do começo/fim da linha caía em linhas próprias e a legenda ficava mais alta
+// (pulava de lugar, principalmente \an5 com \move).
+const WORD_JOINER = '⁠';
+const NOWRAP_PADDING_SPACE = '⁠ ⁠';
 
 /** Corte padrão da hierarquia de tags: abaixo de 40% de opacidade do texto a sombra sai. */
 const DEFAULT_HIERARCHY_CUTOFF = 40;
@@ -30,8 +36,10 @@ export class YttDocument extends SubtitleDocument {
    *   do corte (fadeShadowCutoff ou 40%), a sombra sai (ver letShadowsFollowText e shadowFade). E as cópias que o
    *   .ytt cria para cada tipo de sombra deixam de somar a opacidade do texto (cada uma fica com a fração certa).
    */
-  constructor(doc, { fadeShadowCutoff = null, tagHierarchy = false, shadowFade = 'cor' } = {}) {
+  constructor(doc, { fadeShadowCutoff = null, tagHierarchy = false, shadowFade = 'cor', noWrapPadding = false } = {}) {
     super(doc);
+    /** Preenchimento sem pontos de quebra (ver NOWRAP_PADDING_SPACE). Extensão do port, desligada por padrão. */
+    this.noWrapPadding = noWrapPadding;
     this.fadeShadowCutoff = fadeShadowCutoff;
     this.tagHierarchy = tagHierarchy;
     /** Com tagHierarchy: 'cor' (sombra vai para a cor do texto) ou 'cinza' (sombra automática #222222). */
@@ -370,6 +378,8 @@ export class YttDocument extends SubtitleDocument {
     hiddenTemplate.backColor = Color.fromArgb(0, 130, 140, 150);
     hiddenTemplate.foreColor = Color.fromArgb(0, 160, 170, 180);
 
+    const zw = this.noWrapPadding ? WORD_JOINER : ZERO_WIDTH_SPACE;
+    const paddingSpace = this.noWrapPadding ? NOWRAP_PADDING_SPACE : PADDING_SPACE;
     const createPadding = (template, text, startOffset) => {
       const padding = template.clone();
       padding.text = text;
@@ -392,12 +402,12 @@ export class YttDocument extends SubtitleDocument {
       }
 
       if (i === 0 || line.sections[i - 1].text.endsWith('\r\n')) {
-        line.sections.splice(i, 0, createPadding(hiddenTemplate, ZERO_WIDTH_SPACE, section.startOffset), createPadding(section, PADDING_SPACE, section.startOffset));
+        line.sections.splice(i, 0, createPadding(hiddenTemplate, zw, section.startOffset), createPadding(section, paddingSpace, section.startOffset));
         nextIdx += 2;
       }
 
       if (nextIdx === line.sections.length || line.sections[nextIdx].text.startsWith('\r\n')) {
-        line.sections.splice(nextIdx, 0, createPadding(section, PADDING_SPACE, section.startOffset), createPadding(hiddenTemplate, ZERO_WIDTH_SPACE, section.startOffset));
+        line.sections.splice(nextIdx, 0, createPadding(section, paddingSpace, section.startOffset), createPadding(hiddenTemplate, zw, section.startOffset));
         nextIdx += 2;
       }
 
@@ -437,7 +447,7 @@ export class YttDocument extends SubtitleDocument {
 
   writeBody(w, positions, windowStyles, pens) {
     w.start('body');
-    for (const line of this.lines) writeLine(w, line, positions, windowStyles, pens);
+    for (const line of this.lines) writeLine(w, line, positions, windowStyles, pens, this.noWrapPadding ? WORD_JOINER : ZERO_WIDTH_SPACE);
     w.end();
   }
 
@@ -594,7 +604,9 @@ function undoWorkarounds(line) {
 }
 
 function cleanText(text) {
-  return toCrlf(text.replaceAll(PADDING_SPACE, '').replaceAll(ZERO_WIDTH_SPACE, ''));
+  return toCrlf(
+    text.replaceAll(PADDING_SPACE, '').replaceAll(NOWRAP_PADDING_SPACE, '').replaceAll(ZERO_WIDTH_SPACE, '').replaceAll(WORD_JOINER, ''),
+  );
 }
 
 /** StringExtensions.ToCrlf */
@@ -754,7 +766,7 @@ function writePen(w, id, format) {
   w.end();
 }
 
-function writeLine(w, line, positions, windowStyles, pens) {
+function writeLine(w, line, positions, windowStyles, pens, workaroundChar = ZERO_WIDTH_SPACE) {
   if (line.sections.length === 0) return;
 
   let startMs = line.start - TIME_BASE;
@@ -786,7 +798,7 @@ function writeLine(w, line, positions, windowStyles, pens) {
       if (section.startOffset > 0) w.attr('t', Math.trunc(section.startOffset));
       w.text(section.text);
       w.end();
-      if (i === workaroundIdx) w.text(ZERO_WIDTH_SPACE);
+      if (i === workaroundIdx) w.text(workaroundChar);
     });
   }
   w.end();

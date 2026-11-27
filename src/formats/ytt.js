@@ -51,16 +51,18 @@ export class YttDocument extends SubtitleDocument {
   /**
    * Reads a .ytt/.srv3 file (YttDocument(TextReader) in the C# code).
    * @param {string | Uint8Array} content
+   * @param {{raw?: boolean}} [options] raw: mantém os truques do escritor (preenchimento, zwsp, trechos como estão no
+   *   arquivo), para simular o que o player do YouTube desenha (preview "simular o player atual"). Extensão do port.
    * @returns {YttDocument}
    */
-  static parse(content) {
+  static parse(content, { raw = false } = {}) {
     const doc = new YttDocument();
-    doc.load(decodeText(content));
+    doc.load(decodeText(content), { raw });
     return doc;
   }
 
   /** @param {string} text */
-  load(text) {
+  load(text, { raw = false } = {}) {
     const root = parseXml(text);
     this.videoDimensions = { ...REFERENCE_VIDEO_DIMENSIONS };
 
@@ -74,7 +76,7 @@ export class YttDocument extends SubtitleDocument {
 
     let awaitingAndroidHack = false;
     for (const elem of paragraphs) {
-      const line = readLine(elem, positions, windowStyles, pens);
+      const line = readLine(elem, positions, windowStyles, pens, raw);
       if (line.sections.some((s) => isDark(s.foreColor))) {
         awaitingAndroidHack = true;
       } else if (awaitingAndroidHack) {
@@ -96,7 +98,7 @@ export class YttDocument extends SubtitleDocument {
 
     if (awaitingAndroidHack) this.lines[this.lines.length - 1].androidDarkTextHackAllowed = false;
 
-    this.mergeIdenticallyFormattedSections();
+    if (!raw) this.mergeIdenticallyFormattedSections();
   }
 
   readHead(headElement) {
@@ -582,7 +584,7 @@ function readPen(elem) {
   return [id, pen];
 }
 
-function readLine(elem, positions, windowStyles, pens) {
+function readLine(elem, positions, windowStyles, pens, raw = false) {
   let t = getIntAttribute(elem, 't') ?? 0;
   let d = getIntAttribute(elem, 'd') ?? 5000;
   if (t === 1) {
@@ -608,10 +610,10 @@ function readLine(elem, positions, windowStyles, pens) {
 
   const linePen = getItemAtIndexSafe(pens, getIntAttribute(elem, 'p'));
   for (const node of elem.childNodes) {
-    if (node.nodeType === XmlNodeType.Text) line.sections.push(readTextSection(node, linePen));
-    else if (node.nodeType === XmlNodeType.Element) line.sections.push(readElementSection(node, pens, linePen));
+    if (node.nodeType === XmlNodeType.Text) line.sections.push(readTextSection(node, linePen, raw));
+    else if (node.nodeType === XmlNodeType.Element) line.sections.push(readElementSection(node, pens, linePen, raw));
   }
-  undoWorkarounds(line);
+  if (!raw) undoWorkarounds(line);
   return line;
 }
 
@@ -658,16 +660,16 @@ function toCrlf(str) {
   return str.replace(/(?<!\r)\n/g, '\r\n').replace(/\r(?!\n)/g, '\r\n');
 }
 
-function readTextSection(node, linePen) {
+function readTextSection(node, linePen, raw = false) {
   const section = linePen?.clone() ?? createDefaultSection();
-  section.text = cleanText(node.value);
+  section.text = raw ? node.value : cleanText(node.value);
   return section;
 }
 
-function readElementSection(elem, pens, linePen) {
+function readElementSection(elem, pens, linePen, raw = false) {
   const pen = getItemAtIndexSafe(pens, getIntAttribute(elem, 'p')) ?? linePen;
   const section = pen?.clone() ?? createDefaultSection();
-  section.text = cleanText(elem.innerText);
+  section.text = raw ? elem.innerText : cleanText(elem.innerText);
 
   const startOffsetMs = getIntAttribute(elem, 't');
   if (startOffsetMs != null) section.startOffset = startOffsetMs;

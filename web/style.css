@@ -58,6 +58,12 @@ button:hover { border-color: var(--accent); }
 .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .cues { position: absolute; inset: 0; pointer-events: none; }
 .cue { position: absolute; white-space: pre; max-width: 96%; }
+.stage.yt-layout .cue { white-space: normal; line-height: normal; }
+.stage.yt-layout .captions-text { display: block; word-wrap: normal; }
+.stage.yt-layout .caption-visual-line { display: block; }
+.stage.yt-layout .ytp-caption-segment { display: inline-block; white-space: pre-wrap; line-height: 1.375; }
+.stage.yt-layout .caption-visual-line .ytp-caption-segment:first-child { padding-left: .25em; }
+.stage.yt-layout .caption-visual-line .ytp-caption-segment:last-child { padding-right: .25em; }
 .cue-text { padding: 0 0.15em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
 .controls .play { min-width: 84px; }

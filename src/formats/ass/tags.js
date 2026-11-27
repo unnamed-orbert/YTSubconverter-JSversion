@@ -82,6 +82,40 @@ function removeAnimations(section, predicate) {
 
 const isEmptyArg = (arg) => arg == null || arg.length === 0;
 
+/**
+ * Extensão do port (igual ao libass): uma tag fixa de cor (\\c, \\2c, \\3c, \\4c) que vem depois de um \\t só fixa a
+ * cor, e a opacidade do \\t continua; uma tag fixa de opacidade (\\alpha, \\1a...) só fixa a opacidade, e a troca de cor
+ * do \\t continua. No C# a tag apagava a animação inteira: em `{\\alpha&HFF&\\t(0,20,\\alpha&H00&)\\c&H3B3B3B&}P` a letra
+ * nunca aparecia, e em `{\\t(\\3c&HAF00B2&)}{\\alpha&HFF&\\t(0,40,\\alpha&H00&)}A` a cor do contorno não mudava.
+ * Só com a hierarquia de tags (docs/hierarquia-de-tags.md); sem ela fica como no C#.
+ * `pin` recebe a cor de cada ponta da animação e devolve a cor com a parte fixada; a animação que fica parada some.
+ */
+function pinAnimations(context, section, predicate, pin, originalPredicate = predicate) {
+  // Sem a hierarquia de tags (golden = C#), a tag apaga a animação inteira, como no original (o \\3c e o \\4c apagavam
+  // as de todas as sombras: originalPredicate).
+  if (!context.document.tagHierarchy) {
+    removeAnimations(section, originalPredicate);
+    return;
+  }
+  section.animations = section.animations.flatMap((a) => {
+    if (!predicate(a)) return [a];
+    const startColor = pin(a.startColor, a);
+    const endColor = pin(a.endColor, a);
+    if (startColor.equals(endColor)) return [];
+    const anim = a.clone();
+    anim.startColor = startColor;
+    anim.endColor = endColor;
+    return [anim];
+  });
+}
+
+/** Troca a cor (RGB) e mantém a opacidade. */
+const pinRgb = (color) => (c) => (c.isEmpty || color.isEmpty ? color : Color.fromArgb(c.a, color.r, color.g, color.b));
+/** Troca a opacidade e mantém a cor. */
+const pinAlpha = (alpha) => (c) => (c.isEmpty ? c : changeAlpha(c, alpha));
+/** As sombras que \\4c/\\4a mudam (o contorno fica com \\3c/\\3a quando ele não é caixa). */
+const isShadowOf4c = (context, type) => type !== ShadowType.Glow || !context.style.hasOutline || context.style.hasOutlineBox;
+
 // ---------------------------------------------------------------------------------------------
 // Simple formatting tags
 
@@ -221,7 +255,7 @@ function foreColorTag(tag) {
     affectsWholeLine: false,
     handle(context, arg) {
       context.section.foreColor = !isEmptyArg(arg) ? parseColor(arg, context.section.foreColor.a) : context.style.primaryColor;
-      removeAnimations(context.section, (a) => a instanceof ForeColorAnimation);
+      pinAnimations(context, context.section, (a) => a instanceof ForeColorAnimation, pinRgb(context.section.foreColor));
     },
   };
 }
@@ -233,7 +267,7 @@ const secondaryColorTag = {
     context.section.secondaryColor = !isEmptyArg(arg)
       ? parseColor(arg, context.section.secondaryColor.a)
       : context.style.secondaryColor;
-    removeAnimations(context.section, (a) => a instanceof SecondaryColorAnimation);
+    pinAnimations(context, context.section, (a) => a instanceof SecondaryColorAnimation, pinRgb(context.section.secondaryColor));
   },
 };
 
@@ -246,13 +280,15 @@ const outlineColorTag = {
     const section = context.section;
     if (context.style.outlineIsBox) {
       section.backColor = !isEmptyArg(arg) ? parseColor(arg, section.backColor.a) : context.style.outlineColor;
-      removeAnimations(section, (a) => a instanceof BackColorAnimation);
+      pinAnimations(context, section, (a) => a instanceof BackColorAnimation, pinRgb(section.backColor));
     } else {
       section.shadowColors.set(
         ShadowType.Glow,
         !isEmptyArg(arg) ? parseColor(arg, getRequired(section.shadowColors, ShadowType.Glow).a) : context.style.outlineColor,
       );
-      removeAnimations(section, (a) => a instanceof ShadowColorAnimation);
+      // Só o contorno: o \\t(\\4c) da sombra continua (no C# o \\3c apagava também o da sombra).
+      pinAnimations(context, section, (a) => a instanceof ShadowColorAnimation && a.shadowType === ShadowType.Glow,
+        pinRgb(section.shadowColors.get(ShadowType.Glow)), (a) => a instanceof ShadowColorAnimation);
     }
   },
 };
@@ -265,10 +301,11 @@ const shadowColorTag = {
 
     const section = context.section;
     for (const [type, color] of [...section.shadowColors]) {
-      if (type !== ShadowType.Glow || !context.style.hasOutline || context.style.hasOutlineBox)
+      if (isShadowOf4c(context, type))
         section.shadowColors.set(type, !isEmptyArg(arg) ? parseColor(arg, color.a) : context.style.shadowColor);
     }
-    removeAnimations(section, (a) => a instanceof ShadowColorAnimation);
+    pinAnimations(context, section, (a) => a instanceof ShadowColorAnimation && isShadowOf4c(context, a.shadowType),
+      (c, a) => pinRgb(getRequired(section.shadowColors, a.shadowType))(c), (a) => a instanceof ShadowColorAnimation);
   },
 };
 
@@ -285,7 +322,7 @@ const alphaTag = {
     for (const type of [...section.shadowColors.keys()])
       section.shadowColors.set(type, changeAlpha(section.shadowColors.get(type), alpha));
 
-    removeAnimations(section, (a) => a instanceof ColorAnimation);
+    pinAnimations(context, section, (a) => a instanceof ColorAnimation, pinAlpha(alpha));
   },
 };
 
@@ -295,7 +332,7 @@ const foreAlphaTag = {
   handle(context, arg) {
     const alpha = !isEmptyArg(arg) ? parseAlpha(arg) : context.style.primaryColor.a;
     context.section.foreColor = changeAlpha(context.section.foreColor, alpha);
-    removeAnimations(context.section, (a) => a instanceof ForeColorAnimation);
+    pinAnimations(context, context.section, (a) => a instanceof ForeColorAnimation, pinAlpha(alpha));
   },
 };
 
@@ -305,7 +342,7 @@ const secondaryAlphaTag = {
   handle(context, arg) {
     const alpha = !isEmptyArg(arg) ? parseAlpha(arg) : context.style.secondaryColor.a;
     context.section.secondaryColor = changeAlpha(context.section.secondaryColor, alpha);
-    removeAnimations(context.section, (a) => a instanceof SecondaryColorAnimation);
+    pinAnimations(context, context.section, (a) => a instanceof SecondaryColorAnimation, pinAlpha(alpha));
   },
 };
 
@@ -319,10 +356,10 @@ const outlineAlphaTag = {
     const section = context.section;
     if (context.style.outlineIsBox) {
       section.backColor = changeAlpha(section.backColor, alpha);
-      removeAnimations(section, (a) => a instanceof BackColorAnimation);
+      pinAnimations(context, section, (a) => a instanceof BackColorAnimation, pinAlpha(alpha));
     } else {
       section.shadowColors.set(ShadowType.Glow, changeAlpha(getRequired(section.shadowColors, ShadowType.Glow), alpha));
-      removeAnimations(section, (a) => a instanceof ShadowColorAnimation);
+      pinAnimations(context, section, (a) => a instanceof ShadowColorAnimation && a.shadowType === ShadowType.Glow, pinAlpha(alpha), (a) => a instanceof ShadowColorAnimation);
     }
   },
 };
@@ -336,10 +373,10 @@ const shadowAlphaTag = {
     const alpha = !isEmptyArg(arg) ? parseAlpha(arg) : context.style.shadowColor.a;
     const section = context.section;
     for (const [type, color] of [...section.shadowColors]) {
-      if (type !== ShadowType.Glow || !context.style.hasOutline || context.style.hasOutlineBox)
-        section.shadowColors.set(type, changeAlpha(color, alpha));
+      if (isShadowOf4c(context, type)) section.shadowColors.set(type, changeAlpha(color, alpha));
     }
-    removeAnimations(section, (a) => a instanceof ShadowColorAnimation);
+    pinAnimations(context, section, (a) => a instanceof ShadowColorAnimation && isShadowOf4c(context, a.shadowType), pinAlpha(alpha),
+      (a) => a instanceof ShadowColorAnimation);
   },
 };
 
@@ -352,6 +389,8 @@ const positionTag = {
   handle(context, arg) {
     const coords = parseFloatList(arg);
     if (coords == null || coords.length !== 2 || context.line.position != null) return;
+    // Extensão do port: um \\move antes do \\pos ganha (no libass vale o primeiro dos dois; no C# o \\move ganhava sempre)
+    if (context.line.animations.some((a) => a instanceof MoveAnimation)) return;
     context.line.position = { x: coords[0], y: coords[1] };
   },
 };
@@ -368,10 +407,14 @@ const moveTag = {
     const endPos = { x: args[2], y: args[3] };
     let startTime = line.start;
     let endTime = line.end;
-    if (args.length >= 6) {
+    // Extensão do port (igual ao libass/VSFilter): \\move(x1,y1,x2,y2,0,0), com os dois tempos 0 (ou negativos),
+    // anda durante a linha inteira. No C# a linha ficava parada no começo.
+    if (args.length >= 6 && !(args[4] <= 0 && args[5] <= 0)) {
       startTime = addMs(line.start, args[4]);
       endTime = addMs(line.start, args[5]);
     }
+    // Como no libass, vale o primeiro \\pos ou \\move da linha.
+    if (line.position != null) return;
 
     if (endTime > startTime) line.animations.push(new MoveAnimation(startTime, startPos, endTime, endPos));
   },
@@ -612,9 +655,10 @@ function* createChromaLines(originalLine, colors, center, maxOffsetX, maxOffsetY
       section.animations = section.animations
         .filter((a) => !(a instanceof ShadowColorAnimation) && !(a instanceof BackColorAnimation))
         .map((a) => {
-          if (a instanceof ForeColorAnimation) return new ForeColorAnimation(a.startTime, tint(a.startColor), a.endTime, tint(a.endColor), a.acceleration);
+          if (a instanceof ForeColorAnimation)
+            return new ForeColorAnimation(a.startTime, tint(a.startColor), a.endTime, tint(a.endColor), a.acceleration).withChannelOf(a);
           if (a instanceof SecondaryColorAnimation)
-            return new SecondaryColorAnimation(a.startTime, tint(a.startColor), a.endTime, tint(a.endColor), a.acceleration);
+            return new SecondaryColorAnimation(a.startTime, tint(a.startColor), a.endTime, tint(a.endColor), a.acceleration).withChannelOf(a);
           return a;
         });
     }
@@ -706,49 +750,53 @@ function parseTransformArgs(context, arg) {
  * FetchColorAnimation<T>: finds (or creates) the animation of type `AnimClass` with the given time range
  * that the transform should modify.
  */
-function fetchColorAnimation(context, startTime, endTime, AnimClass, predicate, getSectionColor, createAnim) {
+function fetchColorAnimation(context, startTime, endTime, AnimClass, predicate, getSectionColor, createAnim, channel) {
   const section = context.section;
-  removeAnimations(section, (a) => a instanceof AnimClass && a.startTime > startTime);
+  // Hierarquia de tags: cor e opacidade são animações separadas (ColorAnimation.channel), como no libass.
+  if (!context.document.tagHierarchy) channel = 'all';
+  const sameChannel = (a) => (a.channel ?? 'all') === channel;
+  removeAnimations(section, (a) => a instanceof AnimClass && a.startTime > startTime && sameChannel(a));
 
-  const ofType = () => section.animations.filter((a) => a instanceof AnimClass && (predicate == null || predicate(a)));
+  const ofType = () => section.animations.filter((a) => a instanceof AnimClass && sameChannel(a) && (predicate == null || predicate(a)));
   let anim = ofType().find((a) => a.startTime === startTime && a.endTime === endTime);
   if (!anim) {
     const prevAnims = ofType();
     const prevAnim = prevAnims.length > 0 ? prevAnims[prevAnims.length - 1] : null;
     anim = createAnim(startTime, endTime, prevAnim ? prevAnim.endColor : getSectionColor(section));
+    anim.channel = channel;
     section.animations.push(anim);
   }
   return anim;
 }
 
-function fetchForeColorAnim(context, startTime, endTime, accel) {
+function fetchForeColorAnim(context, startTime, endTime, accel, channel) {
   return fetchColorAnimation(context, startTime, endTime, ForeColorAnimation, null, (s) => s.foreColor,
-    (s, e, c) => new ForeColorAnimation(s, c, e, c, accel));
+    (s, e, c) => new ForeColorAnimation(s, c, e, c, accel), channel);
 }
 
-function fetchSecondaryColorAnim(context, startTime, endTime, accel) {
+function fetchSecondaryColorAnim(context, startTime, endTime, accel, channel) {
   return fetchColorAnimation(context, startTime, endTime, SecondaryColorAnimation, null, (s) => s.secondaryColor,
-    (s, e, c) => new SecondaryColorAnimation(s, c, e, c, accel));
+    (s, e, c) => new SecondaryColorAnimation(s, c, e, c, accel), channel);
 }
 
-function fetchBackColorAnim(context, startTime, endTime, accel) {
+function fetchBackColorAnim(context, startTime, endTime, accel, channel) {
   return fetchColorAnimation(context, startTime, endTime, BackColorAnimation, null, (s) => s.backColor,
-    (s, e, c) => new BackColorAnimation(s, c, e, c, accel));
+    (s, e, c) => new BackColorAnimation(s, c, e, c, accel), channel);
 }
 
-function fetchShadowColorAnim(context, shadowType, startTime, endTime, accel) {
+function fetchShadowColorAnim(context, shadowType, startTime, endTime, accel, channel) {
   return fetchColorAnimation(context, startTime, endTime, ShadowColorAnimation, (a) => a.shadowType === shadowType,
     (s) => getRequired(s.shadowColors, shadowType),
-    (s, e, c) => new ShadowColorAnimation(shadowType, s, c, e, c, accel));
+    (s, e, c) => new ShadowColorAnimation(shadowType, s, c, e, c, accel), channel);
 }
 
 function transformForeColor(context, startTime, endTime, accel, arg) {
-  const anim = fetchForeColorAnim(context, startTime, endTime, accel);
+  const anim = fetchForeColorAnim(context, startTime, endTime, accel, 'rgb');
   anim.endColor = parseColor(arg, anim.endColor.a);
 }
 
 function transformSecondaryColor(context, startTime, endTime, accel, arg) {
-  const anim = fetchSecondaryColorAnim(context, startTime, endTime, accel);
+  const anim = fetchSecondaryColorAnim(context, startTime, endTime, accel, 'rgb');
   anim.endColor = parseColor(arg, anim.endColor.a);
 }
 
@@ -756,7 +804,7 @@ function transformOutlineColor(context, startTime, endTime, accel, arg) {
   if (!context.style.hasOutline) return;
 
   if (context.style.outlineIsBox) {
-    const anim = fetchBackColorAnim(context, startTime, endTime, accel);
+    const anim = fetchBackColorAnim(context, startTime, endTime, accel, 'rgb');
     anim.endColor = parseColor(arg, anim.endColor.a);
   } else {
     transformShadowColor(context, ShadowType.Glow, startTime, endTime, accel, arg);
@@ -771,7 +819,7 @@ function transformShadowColors(context, startTime, endTime, accel, arg) {
 }
 
 function transformShadowColor(context, shadowType, startTime, endTime, accel, arg) {
-  const anim = fetchShadowColorAnim(context, shadowType, startTime, endTime, accel);
+  const anim = fetchShadowColorAnim(context, shadowType, startTime, endTime, accel, 'rgb');
   anim.endColor = parseColor(arg, anim.endColor.a);
 }
 
@@ -783,12 +831,12 @@ function transformAlpha(context, startTime, endTime, accel, arg) {
 }
 
 function transformForeAlpha(context, startTime, endTime, accel, arg) {
-  const anim = fetchForeColorAnim(context, startTime, endTime, accel);
+  const anim = fetchForeColorAnim(context, startTime, endTime, accel, 'alpha');
   anim.endColor = changeAlpha(anim.endColor, parseAlpha(arg));
 }
 
 function transformSecondaryAlpha(context, startTime, endTime, accel, arg) {
-  const anim = fetchSecondaryColorAnim(context, startTime, endTime, accel);
+  const anim = fetchSecondaryColorAnim(context, startTime, endTime, accel, 'alpha');
   anim.endColor = changeAlpha(anim.endColor, parseAlpha(arg));
 }
 
@@ -796,7 +844,7 @@ function transformOutlineAlpha(context, startTime, endTime, accel, arg) {
   if (!context.style.hasOutline) return;
 
   if (context.style.outlineIsBox) {
-    const anim = fetchBackColorAnim(context, startTime, endTime, accel);
+    const anim = fetchBackColorAnim(context, startTime, endTime, accel, 'alpha');
     anim.endColor = changeAlpha(anim.endColor, parseAlpha(arg));
   } else {
     transformShadowAlpha(context, ShadowType.Glow, startTime, endTime, accel, arg);
@@ -811,7 +859,7 @@ function transformShadowAlphas(context, startTime, endTime, accel, arg) {
 }
 
 function transformShadowAlpha(context, shadowType, startTime, endTime, accel, arg) {
-  const anim = fetchShadowColorAnim(context, shadowType, startTime, endTime, accel);
+  const anim = fetchShadowColorAnim(context, shadowType, startTime, endTime, accel, 'alpha');
   anim.endColor = changeAlpha(anim.endColor, parseAlpha(arg));
 }
 

@@ -315,7 +315,7 @@ export class AssDocument extends SubtitleDocument {
       section.animations = section.animations.filter((a) => !(a instanceof ForeColorAnimation));
       for (const anim of section.animations.filter((a) => a instanceof SecondaryColorAnimation)) {
         section.animations.splice(section.animations.indexOf(anim), 1);
-        section.animations.push(new ForeColorAnimation(anim.startTime, anim.startColor, anim.endTime, anim.endColor, anim.acceleration));
+        section.animations.push(new ForeColorAnimation(anim.startTime, anim.startColor, anim.endTime, anim.endColor, anim.acceleration).withChannelOf(anim));
       }
 
       if (section.foreColor.a === 0 && !section.animations.some((a) => a instanceof ForeColorAnimation)) {
